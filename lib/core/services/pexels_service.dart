@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import '../utils/background_keywords.dart';
@@ -40,8 +41,9 @@ class PexelsService {
 
   /// Fetches a random background. [keywordId] filters by Pexels search query.
   Future<PexelsPhotoResult> fetchRandomBackground({String? keywordId}) async {
-    print(
-      '[PexelsService] Fetching random background image (keyword: ${keywordId ?? "all"})',
+    developer.log(
+      'Fetching random background image (keyword: ${keywordId ?? "all"})',
+      name: 'PexelsService',
     );
 
     return _retryWithBackoff(
@@ -56,7 +58,7 @@ class PexelsService {
       final page = 1 + _random.nextInt(10);
       final endpoint =
           '$_searchUrl?query=${Uri.encodeQueryComponent(query)}&orientation=portrait&per_page=$_perPage&page=$page';
-      print('[PexelsService] Making HTTP request to Pexels API');
+      developer.log('Making HTTP request to Pexels API', name: 'PexelsService');
 
       final response = await http
           .get(
@@ -73,7 +75,7 @@ class PexelsService {
             },
           );
 
-      print('[PexelsService] Response status: ${response.statusCode}');
+      developer.log('Response status: ${response.statusCode}', name: 'PexelsService');
 
       if (response.statusCode != 200 || response.body.isEmpty) {
         throw Exception('Pexels API returned status ${response.statusCode}');
@@ -97,15 +99,16 @@ class PexelsService {
       final name = photo['photographer'] as String? ?? 'Unknown';
       final attributionText = 'Photo by $name on Pexels';
 
-      print(
-        '[PexelsService] Image URL: ${imageUrl.substring(0, imageUrl.length > 50 ? 50 : imageUrl.length)}...',
+      developer.log(
+        'Image URL: ${imageUrl.substring(0, imageUrl.length > 50 ? 50 : imageUrl.length)}...',
+        name: 'PexelsService',
       );
       return PexelsPhotoResult(
         imageUrl: imageUrl,
         attributionText: attributionText,
       );
     } catch (e) {
-      print('[PexelsService] Error: $e');
+      developer.log('Error: $e', name: 'PexelsService');
       rethrow;
     }
   }
@@ -133,17 +136,17 @@ class PexelsService {
 
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        print('[PexelsService] Attempt $attempt/$maxAttempts');
+        developer.log('Attempt $attempt/$maxAttempts', name: 'PexelsService');
         return await operation();
       } catch (e) {
-        print('[PexelsService] Attempt $attempt failed: $e');
+        developer.log('Attempt $attempt failed: $e', name: 'PexelsService');
 
         if (attempt == maxAttempts) {
-          print('[PexelsService] All retries exhausted');
+          developer.log('All retries exhausted', name: 'PexelsService');
           rethrow;
         }
 
-        print('[PexelsService] Retrying in ${backoff.inSeconds}s...');
+        developer.log('Retrying in ${backoff.inSeconds}s...', name: 'PexelsService');
         await Future.delayed(backoff);
 
         backoff = Duration(seconds: backoff.inSeconds * 2);

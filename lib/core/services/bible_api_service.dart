@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../models/bible_verse.dart';
 import '../utils/bible_topics.dart';
@@ -18,7 +19,10 @@ class BibleApiService {
     final formatted = passage.replaceAll(' ', '+');
     final url = Uri.parse('$baseUrl$formatted');
 
-    print('[BibleApiService] Fetching verse: $passage (topic: ${topicId ?? "all"})');
+    developer.log(
+      'Fetching verse: $passage (topic: ${topicId ?? "all"})',
+      name: 'BibleApiService',
+    );
 
     return _retryWithBackoff(
       () => _fetchVerseWithTimeout(url),
@@ -28,7 +32,7 @@ class BibleApiService {
 
   Future<BibleVerse> _fetchVerseWithTimeout(Uri url) async {
     try {
-      print('[BibleApiService] Making HTTP request to: $url');
+      developer.log('Making HTTP request to: $url', name: 'BibleApiService');
 
       final response = await http
           .get(url)
@@ -42,7 +46,7 @@ class BibleApiService {
             },
           );
 
-      print('[BibleApiService] Response status: ${response.statusCode}');
+      developer.log('Response status: ${response.statusCode}', name: 'BibleApiService');
 
       if (response.statusCode != 200 || response.body.isEmpty) {
         throw Exception('Bible API returned status ${response.statusCode}');
@@ -60,7 +64,7 @@ class BibleApiService {
         text: verse['text'],
       );
     } catch (e) {
-      print('[BibleApiService] Error: $e');
+      developer.log('Error: $e', name: 'BibleApiService');
       rethrow;
     }
   }
@@ -73,17 +77,17 @@ class BibleApiService {
 
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        print('[BibleApiService] Attempt $attempt/$maxAttempts');
+        developer.log('Attempt $attempt/$maxAttempts', name: 'BibleApiService');
         return await operation();
       } catch (e) {
-        print('[BibleApiService] Attempt $attempt failed: $e');
+        developer.log('Attempt $attempt failed: $e', name: 'BibleApiService');
 
         if (attempt == maxAttempts) {
-          print('[BibleApiService] All retries exhausted');
+          developer.log('All retries exhausted', name: 'BibleApiService');
           rethrow;
         }
 
-        print('[BibleApiService] Retrying in ${backoff.inSeconds}s...');
+        developer.log('Retrying in ${backoff.inSeconds}s...', name: 'BibleApiService');
         await Future.delayed(backoff);
 
         // Exponential backoff: 2s, 4s, 8s

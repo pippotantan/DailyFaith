@@ -2,6 +2,7 @@
 // Fetches verse text from labs.bible.org and outputs JSON for assets/data/offline_verses.json
 
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
@@ -105,7 +106,10 @@ void main() async {
   await file.writeAsString(
     const JsonEncoder.withIndent('  ').convert(result),
   );
-  print('Wrote ${result.values.fold<int>(0, (a, b) => a + b.length)} verses to ${file.path}');
+  developer.log(
+    'Wrote ${result.values.fold<int>(0, (a, b) => a + b.length)} verses to ${file.path}',
+    name: 'fetch_offline_verses',
+  );
 }
 
 Future<Map<String, String>?> fetchVerse(String passage) async {
@@ -123,7 +127,7 @@ Future<Map<String, String>?> fetchVerse(String passage) async {
       'text': v['text'] as String,
     };
   } catch (e) {
-    print('Failed $passage: $e');
+    developer.log('Failed $passage: $e', name: 'fetch_offline_verses');
     return null;
   }
 }

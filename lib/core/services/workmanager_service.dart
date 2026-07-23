@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:zane_bible_lockscreen/background/verse_worker.dart';
@@ -13,19 +15,21 @@ class WorkManagerService {
   }
 
   static Future<void> cancelDailyVerse() async {
-    print('[WorkManagerService] Cancelling daily verse task');
+    developer.log('Cancelling daily verse task', name: 'WorkManagerService');
     await Workmanager().cancelByUniqueName(_taskKey);
-    print('[WorkManagerService] Daily verse task cancelled');
+    developer.log('Daily verse task cancelled', name: 'WorkManagerService');
   }
 
   static Future<void> scheduleDailyVerseAt(int hour, int minute) async {
-    print(
-      '[WorkManagerService] Scheduling daily verse at $hour:${minute.toString().padLeft(2, '0')}',
+    developer.log(
+      'Scheduling daily verse at $hour:${minute.toString().padLeft(2, '0')}',
+      name: 'WorkManagerService',
     );
 
     final initial = _initialDelayFor(hour, minute);
-    print(
-      '[WorkManagerService] Initial delay: ${initial.inSeconds} seconds (${(initial.inHours + (initial.inMinutes % 60) / 60).toStringAsFixed(1)} hours)',
+    developer.log(
+      'Initial delay: ${initial.inSeconds} seconds (${(initial.inHours + (initial.inMinutes % 60) / 60).toStringAsFixed(1)} hours)',
+      name: 'WorkManagerService',
     );
 
     try {
@@ -33,13 +37,14 @@ class WorkManagerService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_scheduledHourKey, hour);
       await prefs.setInt(_scheduledMinuteKey, minute);
-      print('[WorkManagerService] Saved scheduled time to SharedPreferences');
+      developer.log('Saved scheduled time to SharedPreferences', name: 'WorkManagerService');
 
       // Cancel existing task before registering new one
       await Workmanager().cancelByUniqueName(_taskKey);
 
-      print(
-        '[WorkManagerService] Registering one-off task for tomorrow or later today',
+      developer.log(
+        'Registering one-off task for tomorrow or later today',
+        name: 'WorkManagerService',
       );
 
       // Use registerOneOffTask with exact time instead of periodic
@@ -59,13 +64,13 @@ class WorkManagerService {
         existingWorkPolicy: ExistingWorkPolicy.replace,
       );
 
-      print('[WorkManagerService] Successfully registered daily verse task');
-      print(
-        '[WorkManagerService] Scheduled for $hour:${minute.toString().padLeft(2, '0')} daily',
+      developer.log('Successfully registered daily verse task', name: 'WorkManagerService');
+      developer.log(
+        'Scheduled for $hour:${minute.toString().padLeft(2, '0')} daily',
+        name: 'WorkManagerService',
       );
     } catch (e, stackTrace) {
-      print('[WorkManagerService] Error registering task: $e');
-      print('[WorkManagerService] Stack trace: $stackTrace');
+      developer.log('Error registering task: $e', name: 'WorkManagerService', stackTrace: stackTrace);
       rethrow;
     }
   }
@@ -77,18 +82,21 @@ class WorkManagerService {
     // If the time has already passed today, schedule for tomorrow
     if (nextRun.isBefore(now)) {
       nextRun = nextRun.add(const Duration(days: 1));
-      print(
-        '[WorkManagerService] Scheduled time already passed today, scheduling for tomorrow at $hour:${minute.toString().padLeft(2, '0')}',
+      developer.log(
+        'Scheduled time already passed today, scheduling for tomorrow at $hour:${minute.toString().padLeft(2, '0')}',
+        name: 'WorkManagerService',
       );
     } else {
-      print(
-        '[WorkManagerService] Scheduling for today at $hour:${minute.toString().padLeft(2, '0')}',
+      developer.log(
+        'Scheduling for today at $hour:${minute.toString().padLeft(2, '0')}',
+        name: 'WorkManagerService',
       );
     }
 
     final delay = nextRun.difference(now);
-    print(
-      '[WorkManagerService] Delay calculated: ${delay.inMinutes} minutes from now',
+    developer.log(
+      'Delay calculated: ${delay.inMinutes} minutes from now',
+      name: 'WorkManagerService',
     );
     return delay;
   }

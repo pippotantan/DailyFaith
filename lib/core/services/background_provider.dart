@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:zane_bible_lockscreen/core/models/background_result.dart';
 import 'package:zane_bible_lockscreen/core/models/background_source.dart';
 import 'package:zane_bible_lockscreen/core/services/local_gallery_service.dart';
@@ -49,7 +51,7 @@ class BackgroundProvider {
               attributionText: result.attributionText,
             );
           } catch (e) {
-            print('[BackgroundProvider] Pexels failed, trying local: $e');
+            developer.log('Pexels failed, trying local: $e', name: 'BackgroundProvider');
           }
         }
         // Offline or Pexels failed: fallback to local gallery

@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:zane_bible_lockscreen/core/models/bible_verse.dart';
@@ -53,7 +55,7 @@ class _VerseScreenState extends State<VerseScreen> {
         scheduledTime = schedTime;
       });
     } catch (e) {
-      print('[VerseScreen] Failed to load editor settings, using defaults: $e');
+      developer.log('Failed to load editor settings, using defaults: $e', name: 'VerseScreen');
       setState(() {
         editor.fontSize = 42;
         editor.textAlign = TextAlign.center;

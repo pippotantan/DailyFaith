@@ -78,7 +78,7 @@ class SettingsService {
     final p = await _prefs();
     final fontSize = p.getDouble(_fontSizeKey) ?? 22.0;
     final alignStr = p.getString(_textAlignKey) ?? 'center';
-    final textColorValue = p.getInt(_textColorKey) ?? Colors.white.value;
+    final textColorValue = p.getInt(_textColorKey) ?? Colors.white.toARGB32();
 
     //Use actual font family names as default
     final fontFamily = p.getString(_fontFamilyKey) ?? 'Roboto';
@@ -113,7 +113,7 @@ class SettingsService {
         ? 'right'
         : 'center';
     await p.setString(_textAlignKey, alignStr);
-    await p.setInt(_textColorKey, state.textColor.value);
+    await p.setInt(_textColorKey, state.textColor.toARGB32());
 
     // Save the actual font family name
     await p.setString(_fontFamilyKey, state.fontFamily);
@@ -138,8 +138,9 @@ class SettingsService {
   static Future<TimeOfDay?> getScheduledTime() async {
     final p = await _prefs();
     if (!p.containsKey(_scheduledHourKey) ||
-        !p.containsKey(_scheduledMinuteKey))
+        !p.containsKey(_scheduledMinuteKey)) {
       return null;
+    }
     final h = p.getInt(_scheduledHourKey)!;
     final m = p.getInt(_scheduledMinuteKey)!;
     return TimeOfDay(hour: h, minute: m);

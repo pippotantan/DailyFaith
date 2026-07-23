@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:math';
 import 'package:image_picker/image_picker.dart';
@@ -62,7 +63,7 @@ class LocalGalleryService {
           added.add(path);
         }
       } catch (e) {
-        print('[LocalGalleryService] Failed to copy image $i: $e');
+        developer.log('Failed to copy image $i: $e', name: 'LocalGalleryService');
       }
     }
 

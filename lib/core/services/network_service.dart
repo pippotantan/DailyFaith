@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 class NetworkService {
   /// Check if device has network connectivity by attempting DNS lookup
   static Future<bool> hasNetworkConnection() async {
     try {
-      print('[NetworkService] Checking network connectivity via DNS lookup');
+      developer.log('Checking network connectivity via DNS lookup', name: 'NetworkService');
 
       // Attempt to lookup a well-known DNS (Google's)
       final result = await InternetAddress.lookup(
@@ -14,11 +15,12 @@ class NetworkService {
 
       final hasConnection =
           result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-      print('[NetworkService] Network connection check: $hasConnection');
+      developer.log('Network connection check: $hasConnection', name: 'NetworkService');
       return hasConnection;
     } catch (e) {
-      print(
-        '[NetworkService] Network check failed ($e) - assuming no connection',
+      developer.log(
+        'Network check failed ($e) - assuming no connection',
+        name: 'NetworkService',
       );
       return false;
     }
@@ -30,27 +32,28 @@ class NetworkService {
     Duration retryInterval = const Duration(seconds: 2),
   }) async {
     try {
-      print('[NetworkService] Waiting for network connection...');
+      developer.log('Waiting for network connection...', name: 'NetworkService');
 
       final startTime = DateTime.now();
 
       while (DateTime.now().difference(startTime) < timeout) {
         final hasConnection = await hasNetworkConnection();
         if (hasConnection) {
-          print('[NetworkService] Network connection restored');
+          developer.log('Network connection restored', name: 'NetworkService');
           return true;
         }
 
-        print(
-          '[NetworkService] No connection yet, retrying in ${retryInterval.inSeconds}s...',
+        developer.log(
+          'No connection yet, retrying in ${retryInterval.inSeconds}s...',
+          name: 'NetworkService',
         );
         await Future.delayed(retryInterval);
       }
 
-      print('[NetworkService] Timeout waiting for network connection');
+      developer.log('Timeout waiting for network connection', name: 'NetworkService');
       return false;
     } catch (e) {
-      print('[NetworkService] Error waiting for network: $e');
+      developer.log('Error waiting for network: $e', name: 'NetworkService');
       return false;
     }
   }

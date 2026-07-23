@@ -76,10 +76,12 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
         );
       }
     } catch (e) {
-      if (mounted) setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update: $e')),
-      );
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update: $e')),
+        );
+      }
     }
   }
 
@@ -104,10 +106,12 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
         );
       }
     } catch (e) {
-      if (mounted) setState(() => _isPickingImages = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add images: $e')),
-      );
+      if (mounted) {
+        setState(() => _isPickingImages = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add images: $e')),
+        );
+      }
     }
   }
 
@@ -141,10 +145,12 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
         );
       }
     } catch (e) {
-      if (mounted) setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update keyword: $e')),
-      );
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update keyword: $e')),
+        );
+      }
     }
   }
 
@@ -162,10 +168,12 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
         );
       }
     } catch (e) {
-      if (mounted) setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update topic: $e')),
-      );
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update topic: $e')),
+        );
+      }
     }
   }
 
@@ -185,11 +193,12 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
         );
       }
     } catch (e) {
-      if (mounted) setState(() => _isSaving = false);
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to update target: $e')));
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update target: $e')),
+        );
+      }
     }
   }
 
@@ -207,12 +216,6 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
         subtitle: Text(subtitle),
         secondary: icon != null ? Icon(icon, color: Colors.blue) : null,
         value: value,
-        groupValue: selectedTarget,
-        onChanged: _isSaving
-            ? null
-            : (target) {
-                if (target != null) _saveWallpaperTarget(target);
-              },
       ),
     );
   }
@@ -241,19 +244,23 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
                   Card(
                     elevation: 2,
                     margin: const EdgeInsets.only(bottom: 8),
-                    child: Column(
-                      children: BackgroundSource.values.map((source) {
-                        return RadioListTile<BackgroundSource>(
-                          title: Text(source.displayName),
-                          value: source,
-                          groupValue: selectedBackgroundSource,
-                          onChanged: _isSaving
-                              ? null
-                              : (v) {
-                                  if (v != null) _saveBackgroundSource(v);
-                                },
-                        );
-                      }).toList(),
+                    child: RadioGroup<BackgroundSource>(
+                      groupValue: selectedBackgroundSource,
+                      onChanged: _isSaving
+                          ? (_) {}
+                          : (source) {
+                              if (source != null) {
+                                _saveBackgroundSource(source);
+                              }
+                            },
+                      child: Column(
+                        children: BackgroundSource.values.map((source) {
+                          return RadioListTile<BackgroundSource>(
+                            title: Text(source.displayName),
+                            value: source,
+                          );
+                        }).toList(),
+                      ),
                     ),
                   ),
                   if (selectedBackgroundSource == BackgroundSource.localGallery) ...[
@@ -417,8 +424,9 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
                           onChanged: _isSaving
                               ? null
                               : (value) {
-                                  if (value != null)
+                                  if (value != null) {
                                     _saveBackgroundKeyword(value);
+                                  }
                                 },
                         ),
                       ),
@@ -468,24 +476,38 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-                  _buildRadioCard(
-                    title: 'Lock Screen Only',
-                    subtitle: 'Update only the lock screen background',
-                    value: WallpaperTarget.lockScreenOnly,
-                    icon: Icons.lock,
-                  ),
-                  _buildRadioCard(
-                    title: 'Home Screen Only',
-                    subtitle: 'Update only the home screen background',
-                    value: WallpaperTarget.homeScreenOnly,
-                    icon: Icons.home,
-                  ),
-                  _buildRadioCard(
-                    title: 'Both',
-                    subtitle:
-                        'Update both lock screen and home screen backgrounds',
-                    value: WallpaperTarget.both,
-                    icon: Icons.smartphone,
+                  RadioGroup<WallpaperTarget>(
+                    groupValue: selectedTarget,
+                    onChanged: _isSaving
+                        ? (_) {}
+                        : (target) {
+                            if (target != null) {
+                              _saveWallpaperTarget(target);
+                            }
+                          },
+                    child: Column(
+                      children: [
+                        _buildRadioCard(
+                          title: 'Lock Screen Only',
+                          subtitle: 'Update only the lock screen background',
+                          value: WallpaperTarget.lockScreenOnly,
+                          icon: Icons.lock,
+                        ),
+                        _buildRadioCard(
+                          title: 'Home Screen Only',
+                          subtitle: 'Update only the home screen background',
+                          value: WallpaperTarget.homeScreenOnly,
+                          icon: Icons.home,
+                        ),
+                        _buildRadioCard(
+                          title: 'Both',
+                          subtitle:
+                              'Update both lock screen and home screen backgrounds',
+                          value: WallpaperTarget.both,
+                          icon: Icons.smartphone,
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 24),
                   const Divider(),
@@ -493,7 +515,7 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
+                      color: Colors.blue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Text(

@@ -150,7 +150,7 @@ class ImageGenerationService {
     verseParagraphShadow.layout(ui.ParagraphConstraints(width: maxVerseWidth));
 
     final verseBuilder = ui.ParagraphBuilder(verseStyle)
-      ..pushStyle(ui.TextStyle(color: ui.Color(textColor.value)));
+      ..pushStyle(ui.TextStyle(color: ui.Color(textColor.toARGB32())));
     verseBuilder.addText(verse);
     final verseParagraph = verseBuilder.build();
     verseParagraph.layout(ui.ParagraphConstraints(width: maxVerseWidth));
@@ -170,7 +170,7 @@ class ImageGenerationService {
     final refBuilder = ui.ParagraphBuilder(refStyle)
       ..pushStyle(ui.TextStyle(
         color: ui.Color(
-          textColor.withOpacity(0.9).value,
+          textColor.withValues(alpha: 0.9).toARGB32(),
         ),
       ));
     refBuilder.addText(reference);
@@ -210,7 +210,7 @@ class ImageGenerationService {
         textAlign: ui.TextAlign.center,
       );
       final attrColor = ui.Color(
-        (Colors.white.withOpacity(attributionOpacity).value),
+        (Colors.white.withValues(alpha: attributionOpacity).toARGB32()),
       );
       final attrBuilderShadow = ui.ParagraphBuilder(attrStyle)
         ..pushStyle(ui.TextStyle(color: shadowColor));

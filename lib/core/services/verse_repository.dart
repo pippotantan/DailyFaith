@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:zane_bible_lockscreen/core/data/offline_verses.dart';
 import 'package:zane_bible_lockscreen/core/models/bible_verse.dart';
 import 'package:zane_bible_lockscreen/core/services/bible_api_service.dart';
@@ -19,10 +21,10 @@ class VerseRepository {
         final verse = await _api.fetchRandomVerse(topicId: topicId);
         return verse;
       } catch (e) {
-        print('[VerseRepository] API failed, using offline: $e');
+        developer.log('API failed, using offline: $e', name: 'VerseRepository');
       }
     } else {
-      print('[VerseRepository] Offline: using pre-loaded verses');
+      developer.log('Offline: using pre-loaded verses', name: 'VerseRepository');
     }
 
     final offline = OfflineVerses.getRandomVerse(topicId);
