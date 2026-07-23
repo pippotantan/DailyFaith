@@ -17,8 +17,8 @@ class ImageGenerationService {
   static double get _fontScale => wallpaperWidth / _previewLogicalWidth;
 
   /// MAIN ENTRY POINT – canvas-based so it works identically in UI and background (WorkManager).
-  /// Provide either [backgroundUrl] (Unsplash) or [backgroundPath] (local file).
-  /// [unsplashAttribution] optional; if set, drawn at bottom per Unsplash guidelines.
+  /// Provide either [backgroundUrl] (Pexels) or [backgroundPath] (local file).
+  /// [photoAttribution] optional; if set, drawn at bottom per Pexels guidelines.
   static Future<Uint8List> generateVerseImage({
     String? backgroundUrl,
     String? backgroundPath,
@@ -28,7 +28,7 @@ class ImageGenerationService {
     required TextAlign textAlign,
     required Color textColor,
     required String fontFamily,
-    String? unsplashAttribution,
+    String? photoAttribution,
   }) async {
     return _generateVerseImageCanvas(
       backgroundUrl: backgroundUrl,
@@ -39,7 +39,7 @@ class ImageGenerationService {
       textAlign: textAlign,
       textColor: textColor,
       fontFamily: fontFamily,
-      unsplashAttribution: unsplashAttribution,
+      photoAttribution: photoAttribution,
     );
   }
 
@@ -54,7 +54,7 @@ class ImageGenerationService {
     required TextAlign textAlign,
     required Color textColor,
     required String fontFamily,
-    String? unsplashAttribution,
+    String? photoAttribution,
   }) async {
     final w = wallpaperWidth;
     final h = wallpaperHeight;
@@ -199,8 +199,8 @@ class ImageGenerationService {
     canvas.drawParagraph(refParagraphShadow, refOffset + ui.Offset(shadowOffset, shadowOffset));
     canvas.drawParagraph(refParagraph, refOffset);
 
-    // 6b. Unsplash attribution at bottom (per API guidelines), subtle so it doesn’t ruin the design
-    if (unsplashAttribution != null && unsplashAttribution.isNotEmpty) {
+    // 6b. Photo attribution at bottom (per API guidelines), subtle so it doesn’t ruin the design
+    if (photoAttribution != null && photoAttribution.isNotEmpty) {
       const attributionFontSize = 22.0; // small, readable
       const attributionOpacity = 0.82;
       const attrShadowOffset = 2.0;
@@ -214,13 +214,13 @@ class ImageGenerationService {
       );
       final attrBuilderShadow = ui.ParagraphBuilder(attrStyle)
         ..pushStyle(ui.TextStyle(color: shadowColor));
-      attrBuilderShadow.addText(unsplashAttribution);
+      attrBuilderShadow.addText(photoAttribution);
       final attrParagraphShadow = attrBuilderShadow.build();
       attrParagraphShadow.layout(ui.ParagraphConstraints(width: contentWidth));
 
       final attrBuilder = ui.ParagraphBuilder(attrStyle)
         ..pushStyle(ui.TextStyle(color: attrColor));
-      attrBuilder.addText(unsplashAttribution);
+      attrBuilder.addText(photoAttribution);
       final attrParagraph = attrBuilder.build();
       attrParagraph.layout(ui.ParagraphConstraints(width: contentWidth));
 

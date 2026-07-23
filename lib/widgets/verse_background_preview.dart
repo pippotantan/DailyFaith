@@ -19,7 +19,7 @@ List<Shadow> _readabilityShadows(Color textColor) {
 }
 
 class VerseBackgroundPreview extends StatelessWidget {
-  /// Network image URL (from Unsplash). Use when [localPath] is null.
+  /// Network image URL (from Pexels). Use when [localPath] is null.
   final String? imageUrl;
 
   /// Local file path (from device gallery). Use when [imageUrl] is null.

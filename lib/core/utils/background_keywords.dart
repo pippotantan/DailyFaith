@@ -1,5 +1,5 @@
-/// Background image filter for Unsplash. Default "all" uses a broad query.
-/// Other keywords are passed as the Unsplash API `query` for /photos/random.
+/// Background image filter for Pexels. Default "all" uses a varied query.
+/// Other keywords are passed as the Pexels API `query` for /v1/search.
 class BackgroundKeywords {
   static const String all = 'all';
 
@@ -47,10 +47,10 @@ class BackgroundKeywords {
     }
   }
 
-  /// Unsplash API query string. For "all" returns a broad default query.
+  /// Pexels API query string. For "all" returns a broad default query.
   static String queryFor(String id) {
     if (id == all || id.isEmpty) {
-      return 'nature,faith,sky,landscape';
+      return 'nature';
     }
     return id;
   }

@@ -19,7 +19,7 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
   WallpaperTarget selectedTarget = WallpaperTarget.both;
   String selectedVerseTopic = BibleTopics.all;
   String selectedBackgroundKeyword = BackgroundKeywords.all;
-  BackgroundSource selectedBackgroundSource = BackgroundSource.unsplash;
+  BackgroundSource selectedBackgroundSource = BackgroundSource.pexels;
   List<String> localImagePaths = [];
   bool isLoading = true;
   bool _isSaving = false;
@@ -54,7 +54,7 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
           selectedTarget = WallpaperTarget.both;
           selectedVerseTopic = BibleTopics.all;
           selectedBackgroundKeyword = BackgroundKeywords.all;
-          selectedBackgroundSource = BackgroundSource.unsplash;
+          selectedBackgroundSource = BackgroundSource.pexels;
           localImagePaths = [];
           isLoading = false;
         });
@@ -234,7 +234,7 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Choose Unsplash (online) or your device gallery (works offline).',
+                    'Choose Pexels (online) or your device gallery (works offline).',
                     style: TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
@@ -383,7 +383,7 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
                       ),
                     const SizedBox(height: 20),
                   ],
-                  if (selectedBackgroundSource == BackgroundSource.unsplash) ...[
+                  if (selectedBackgroundSource == BackgroundSource.pexels) ...[
                     const SizedBox(height: 20),
                     const Text(
                       'Background image by keyword',

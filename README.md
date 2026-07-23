@@ -10,10 +10,10 @@ DailyFaith turns your lock screen and home screen into a daily dose of Scripture
 - **Offline verses** — 100+ verses are stored locally so the app can show random verses even without an internet connection.
 
 ### Background Images
-- **Unsplash (online)** — High-quality images from Unsplash API. Filter by keyword: All, Nature, Christian, Animals, Wildlife, Outer Space, Landscape, Sky, Ocean, Mountains, or Flowers.
+- **Pexels (online)** — High-quality images from Pexels API. Filter by keyword: All, Nature, Christian, Animals, Wildlife, Outer Space, Landscape, Sky, Ocean, Mountains, or Flowers.
 - **Device gallery (offline)** — Select multiple images from your gallery. The app picks one randomly for each background. Works fully offline.
-- **Background source** — Choose Unsplash or your gallery in Wallpaper Settings. When offline, Unsplash automatically falls back to local gallery if available.
-- **Unsplash attribution** — Photographer credit shown at the bottom when using Unsplash images.
+- **Background source** — Choose Pexels or your gallery in Wallpaper Settings. When offline, Pexels automatically falls back to local gallery if available.
+- **Pexels attribution** — Photographer credit shown at the bottom when using Pexels images.
 
 ### Customization
 - **Font size, alignment, color** — Adjust how the verse appears on the wallpaper.
@@ -46,7 +46,7 @@ DailyFaith turns your lock screen and home screen into a daily dose of Scripture
 ## Project Structure
 
 - `lib/features/` — Main UI: verse screen, editor controls, wallpaper settings.
-- `lib/core/services/` — Background provider, Bible API, verse repository, Unsplash, local gallery, image generation, wallpaper, WorkManager, settings.
+- `lib/core/services/` — Background provider, Bible API, verse repository, Pexels, local gallery, image generation, wallpaper, WorkManager, settings.
 - `lib/core/data/` — Offline verse store.
 - `lib/core/models/` — Bible verse, background source, background result.
 - `lib/core/utils/` — Bible metadata (66 books), topics, background keywords.

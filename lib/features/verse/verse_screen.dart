@@ -22,7 +22,7 @@ class _VerseScreenState extends State<VerseScreen> {
   BibleVerse? verse;
   String? backgroundUrl;
   String? backgroundPath;
-  String? unsplashAttribution;
+  String? photoAttribution;
   bool loading = true;
   final editor = VerseEditorState();
   bool useForDaily = false;
@@ -82,7 +82,7 @@ class _VerseScreenState extends State<VerseScreen> {
         verse = verseResult;
         backgroundUrl = bgResult?.imageUrl;
         backgroundPath = bgResult?.localPath;
-        unsplashAttribution = bgResult?.attributionText;
+        photoAttribution = bgResult?.attributionText;
         loading = false;
       });
       if (bgResult == null && mounted) {
@@ -125,7 +125,7 @@ class _VerseScreenState extends State<VerseScreen> {
         textAlign: editor.textAlign,
         textColor: editor.textColor,
         fontFamily: editor.fontFamily,
-        unsplashAttribution: unsplashAttribution,
+        photoAttribution: photoAttribution,
       );
 
       final name = 'verse_${DateTime.now().millisecondsSinceEpoch}';
@@ -179,7 +179,7 @@ class _VerseScreenState extends State<VerseScreen> {
         textAlign: editor.textAlign,
         textColor: editor.textColor,
         fontFamily: editor.fontFamily,
-        unsplashAttribution: unsplashAttribution,
+        photoAttribution: photoAttribution,
       );
 
       final file = await ImageGenerationService.saveImage(

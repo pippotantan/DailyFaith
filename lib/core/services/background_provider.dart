@@ -3,15 +3,15 @@ import 'package:zane_bible_lockscreen/core/models/background_source.dart';
 import 'package:zane_bible_lockscreen/core/services/local_gallery_service.dart';
 import 'package:zane_bible_lockscreen/core/services/network_service.dart';
 import 'package:zane_bible_lockscreen/core/services/settings_service.dart';
-import 'package:zane_bible_lockscreen/core/services/unsplash_service.dart';
+import 'package:zane_bible_lockscreen/core/services/pexels_service.dart';
 
 /// Unified provider for background images.
-/// Selects between Unsplash and local gallery based on user settings.
+/// Selects between Pexels and local gallery based on user settings.
 /// When offline, falls back to local gallery if available.
 class BackgroundProvider {
   /// Fetches a background image based on current settings.
   /// - If [BackgroundSource.localGallery]: returns random local image (works offline).
-  /// - If [BackgroundSource.unsplash]: uses Unsplash when online; falls back to local gallery when offline.
+  /// - If [BackgroundSource.pexels]: uses Pexels when online; falls back to local gallery when offline.
   static Future<BackgroundResult?> fetchBackground({
     required String keywordId,
   }) async {
@@ -23,10 +23,10 @@ class BackgroundProvider {
         if (path != null) {
           return BackgroundResult(localPath: path);
         }
-        // No local images: try Unsplash as fallback when online
+        // No local images: try Pexels as fallback when online
         if (await NetworkService.hasNetworkConnection()) {
           try {
-            final result = await UnsplashService().fetchRandomBackground(
+            final result = await PexelsService().fetchRandomBackground(
               keywordId: keywordId,
             );
             return BackgroundResult(
@@ -37,11 +37,11 @@ class BackgroundProvider {
         }
         return null;
 
-      case BackgroundSource.unsplash:
+      case BackgroundSource.pexels:
         final hasNetwork = await NetworkService.hasNetworkConnection();
         if (hasNetwork) {
           try {
-            final result = await UnsplashService().fetchRandomBackground(
+            final result = await PexelsService().fetchRandomBackground(
               keywordId: keywordId,
             );
             return BackgroundResult(
@@ -49,10 +49,10 @@ class BackgroundProvider {
               attributionText: result.attributionText,
             );
           } catch (e) {
-            print('[BackgroundProvider] Unsplash failed, trying local: $e');
+            print('[BackgroundProvider] Pexels failed, trying local: $e');
           }
         }
-        // Offline or Unsplash failed: fallback to local gallery
+        // Offline or Pexels failed: fallback to local gallery
         final path = await LocalGalleryService.getRandomPath();
         if (path != null) {
           return BackgroundResult(localPath: path);

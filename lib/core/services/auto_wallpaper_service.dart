@@ -16,7 +16,7 @@ class AutoWallpaperService {
       final BibleVerse verse =
           await VerseRepository().fetchRandomVerse(topicId: topic);
 
-      // ✅ 2. Fetch background (Unsplash when online, or local gallery for offline)
+      // ✅ 2. Fetch background (Pexels when online, or local gallery for offline)
       final keyword = await SettingsService.getBackgroundKeyword();
       final bgResult = await BackgroundProvider.fetchBackground(keywordId: keyword);
 
@@ -59,7 +59,7 @@ class AutoWallpaperService {
         print('[AutoWallpaperService] Editor settings failed, using defaults');
       }
 
-      // 6️⃣ Generate image using centralized service (with Unsplash attribution when applicable)
+      // 6️⃣ Generate image using centralized service (with photo attribution when applicable)
       final image = await ImageGenerationService.generateVerseImage(
         backgroundUrl: bgResult.imageUrl,
         backgroundPath: bgResult.localPath,
@@ -69,7 +69,7 @@ class AutoWallpaperService {
         textAlign: textAlign,
         textColor: textColor,
         fontFamily: fontFamily,
-        unsplashAttribution: bgResult.attributionText,
+        photoAttribution: bgResult.attributionText,
       );
 
       print('[AutoWallpaperService] Image generated (${image.length} bytes)');

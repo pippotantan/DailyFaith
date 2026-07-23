@@ -34,20 +34,22 @@ class SettingsService {
     await p.setString(_backgroundKeywordKey, keywordId);
   }
 
-  /// Background source: Unsplash (online) or local gallery (offline-capable).
+  /// Background source: Pexels (online) or local gallery (offline-capable).
   static Future<BackgroundSource> getBackgroundSource() async {
     final p = await _prefs();
-    final value = p.getString(_backgroundSourceKey) ?? 'unsplash';
-    return value == 'localGallery'
-        ? BackgroundSource.localGallery
-        : BackgroundSource.unsplash;
+    final value = p.getString(_backgroundSourceKey) ?? 'pexels';
+    if (value == 'localGallery') {
+      return BackgroundSource.localGallery;
+    }
+    // Migrate legacy 'unsplash' preference to Pexels.
+    return BackgroundSource.pexels;
   }
 
   static Future<void> setBackgroundSource(BackgroundSource source) async {
     final p = await _prefs();
     await p.setString(
       _backgroundSourceKey,
-      source == BackgroundSource.localGallery ? 'localGallery' : 'unsplash',
+      source == BackgroundSource.localGallery ? 'localGallery' : 'pexels',
     );
   }
 
