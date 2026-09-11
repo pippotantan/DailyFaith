@@ -1,27 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-
-List<Shadow> _readabilityShadows(Color textColor) {
-  final luminance = textColor.computeLuminance();
-  if (luminance > 0.4) {
-    return [
-      Shadow(color: Colors.black.withValues(alpha: 0.9), offset: const Offset(2, 2), blurRadius: 2),
-      Shadow(color: Colors.black.withValues(alpha: 0.6), offset: const Offset(1, 1), blurRadius: 4),
-    ];
-  } else {
-    return [
-      Shadow(color: Colors.white.withValues(alpha: 0.9), offset: const Offset(2, 2), blurRadius: 2),
-      Shadow(color: Colors.white.withValues(alpha: 0.6), offset: const Offset(1, 1), blurRadius: 4),
-    ];
-  }
-}
+import 'package:zane_bible_lockscreen/core/utils/verse_text_parser.dart';
+import 'package:zane_bible_lockscreen/core/utils/verse_text_style.dart';
 
 class VerseBackgroundPreview extends StatelessWidget {
   /// Network image URL (from Pexels). Use when [localPath] is null.
   final String? imageUrl;
 
-  /// Local file path (from device gallery). Use when [imageUrl] is null.
+  /// Local file path (from device gallery). Use when [localPath] is null.
   final String? localPath;
 
   final String verse;
@@ -54,6 +41,23 @@ class VerseBackgroundPreview extends StatelessWidget {
       imageWidget = Container(color: const Color(0xFF1a1a2e));
     }
 
+    final verseBaseStyle = TextStyle(
+      fontSize: fontSize,
+      color: textColor,
+      height: 1.3,
+      fontFamily: fontFamily,
+      fontWeight: FontWeight.w500,
+      shadows: VerseTextStyle.readabilityShadows(),
+    );
+
+    final referenceStyle = TextStyle(
+      fontSize: fontSize * 0.55,
+      color: textColor.withValues(alpha: 0.9),
+      fontStyle: FontStyle.italic,
+      fontFamily: 'Roboto',
+      shadows: VerseTextStyle.readabilityShadows(),
+    );
+
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -72,16 +76,14 @@ class VerseBackgroundPreview extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   /// Verse (shadow for readability on any background)
-                  Text(
-                    verse,
+                  RichText(
                     textAlign: textAlign,
-                    style: TextStyle(
-                      fontSize: fontSize,
-                      color: textColor,
-                      height: 1.3,
-                      fontFamily: fontFamily,
-                      fontWeight: FontWeight.w500,
-                      shadows: _readabilityShadows(textColor),
+                    text: TextSpan(
+                      style: verseBaseStyle,
+                      children: buildVerseTextSpans(
+                        raw: verse,
+                        baseStyle: verseBaseStyle,
+                      ),
                     ),
                   ),
 
@@ -91,13 +93,7 @@ class VerseBackgroundPreview extends StatelessWidget {
                   Text(
                     reference,
                     textAlign: textAlign,
-                    style: TextStyle(
-                      fontSize: fontSize * 0.55,
-                      color: textColor.withValues(alpha: 0.9),
-                      fontStyle: FontStyle.italic,
-                      fontFamily: 'Roboto',
-                      shadows: _readabilityShadows(textColor),
-                    ),
+                    style: referenceStyle,
                   ),
                 ],
               ),

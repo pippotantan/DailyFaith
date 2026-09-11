@@ -6,6 +6,7 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:zane_bible_lockscreen/core/utils/verse_text_parser.dart';
 
 const passages = {
   'love': [
@@ -124,7 +125,7 @@ Future<Map<String, String>?> fetchVerse(String passage) async {
     final v = data.first as Map<String, dynamic>;
     return {
       'reference': '${v['bookname']} ${v['chapter']}:${v['verse']}',
-      'text': v['text'] as String,
+      'text': plainVerseText((v['text'] as String).trim()),
     };
   } catch (e) {
     developer.log('Failed $passage: $e', name: 'fetch_offline_verses');

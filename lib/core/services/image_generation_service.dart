@@ -4,6 +4,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:zane_bible_lockscreen/core/utils/verse_text_parser.dart';
+import 'package:zane_bible_lockscreen/core/utils/verse_text_style.dart';
 
 class ImageGenerationService {
   static const int wallpaperWidth = 1080;
@@ -131,8 +133,8 @@ class ImageGenerationService {
 
     final uiTextAlign = _toUiTextAlign(textAlign);
 
-    // Shadow color for readability on any background: dark outline so light text reads on light areas
-    final shadowColor = _readabilityShadowColor(textColor);
+    // Shadow color for readability on dark overlay backgrounds.
+    final shadowColor = VerseTextStyle.canvasShadowColor();
     const shadowOffset = 3.0;
 
     // 6. Build verse paragraph (main + shadow for readability)
@@ -143,15 +145,30 @@ class ImageGenerationService {
       textAlign: uiTextAlign,
       height: 1.3,
     );
-    final verseBuilderShadow = ui.ParagraphBuilder(verseStyle)
-      ..pushStyle(ui.TextStyle(color: shadowColor));
-    verseBuilderShadow.addText(verse);
+    final verseSegments = parseVerseText(verse);
+    final verseBuilderShadow = ui.ParagraphBuilder(verseStyle);
+    _addSegmentsToParagraph(
+      verseBuilderShadow,
+      verseSegments,
+      baseStyle: ui.TextStyle(color: shadowColor),
+      boldStyle: ui.TextStyle(
+        color: shadowColor,
+        fontWeight: ui.FontWeight.w700,
+      ),
+    );
     final verseParagraphShadow = verseBuilderShadow.build();
     verseParagraphShadow.layout(ui.ParagraphConstraints(width: maxVerseWidth));
 
-    final verseBuilder = ui.ParagraphBuilder(verseStyle)
-      ..pushStyle(ui.TextStyle(color: ui.Color(textColor.toARGB32())));
-    verseBuilder.addText(verse);
+    final verseBuilder = ui.ParagraphBuilder(verseStyle);
+    _addSegmentsToParagraph(
+      verseBuilder,
+      verseSegments,
+      baseStyle: ui.TextStyle(color: ui.Color(textColor.toARGB32())),
+      boldStyle: ui.TextStyle(
+        color: ui.Color(textColor.toARGB32()),
+        fontWeight: ui.FontWeight.w700,
+      ),
+    );
     final verseParagraph = verseBuilder.build();
     verseParagraph.layout(ui.ParagraphConstraints(width: maxVerseWidth));
 
@@ -240,14 +257,16 @@ class ImageGenerationService {
     return byteData.buffer.asUint8List();
   }
 
-  /// Returns a shadow color that contrasts with [textColor] so text stays readable on any background.
-  static ui.Color _readabilityShadowColor(Color textColor) {
-    final luminance = textColor.computeLuminance();
-    // Light text (e.g. white) -> dark shadow; dark text -> light shadow
-    if (luminance > 0.4) {
-      return const ui.Color(0xE6000000); // opaque black
-    } else {
-      return const ui.Color(0xE6FFFFFF); // opaque white
+  static void _addSegmentsToParagraph(
+    ui.ParagraphBuilder builder,
+    List<VerseTextSegment> segments, {
+    required ui.TextStyle baseStyle,
+    required ui.TextStyle boldStyle,
+  }) {
+    for (final segment in segments) {
+      builder.pushStyle(segment.isBold ? boldStyle : baseStyle);
+      builder.addText(segment.text);
+      builder.pop();
     }
   }
 

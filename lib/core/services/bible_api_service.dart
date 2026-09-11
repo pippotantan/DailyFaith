@@ -59,9 +59,11 @@ class BibleApiService {
 
       final verse = data.first;
 
+      final rawText = (verse['text'] as String).trim();
+
       return BibleVerse(
         reference: '${verse['bookname']} ${verse['chapter']}:${verse['verse']}',
-        text: verse['text'],
+        text: rawText,
       );
     } catch (e) {
       developer.log('Error: $e', name: 'BibleApiService');

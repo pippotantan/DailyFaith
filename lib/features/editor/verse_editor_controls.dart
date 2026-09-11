@@ -53,6 +53,9 @@ class _VerseEditorControlsState extends State<VerseEditorControls> {
     'Roboto',
     'PlayfairDisplay',
     'GreatVibes',
+    'Lora',
+    'CormorantGaramond',
+    'Cinzel',
   ];
 
   // Local copies to reflect changes immediately
@@ -228,9 +231,9 @@ class _VerseEditorControlsState extends State<VerseEditorControls> {
                   _colorDot(Colors.yellowAccent),
                   _colorDot(Colors.orangeAccent),
                   _colorDot(Colors.lightBlueAccent),
-                  _colorDot(Colors.purpleAccent),
+                  _colorDot(Colors.purple.shade200),
                   _colorDot(Colors.greenAccent),
-                  _colorDot(Colors.redAccent),
+                  _colorDot(Colors.red.shade200),
                 ],
               ),
 
