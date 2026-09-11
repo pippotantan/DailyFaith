@@ -6,6 +6,7 @@ import 'package:zane_bible_lockscreen/core/services/local_gallery_service.dart';
 import 'package:zane_bible_lockscreen/core/services/settings_service.dart';
 import 'package:zane_bible_lockscreen/core/utils/background_keywords.dart';
 import 'package:zane_bible_lockscreen/core/utils/bible_topics.dart';
+import 'package:zane_bible_lockscreen/core/utils/external_links.dart';
 
 class WallpaperSettingsScreen extends StatefulWidget {
   const WallpaperSettingsScreen({super.key});
@@ -199,6 +200,18 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
           SnackBar(content: Text('Failed to update target: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _openSupportPage() async {
+    final launched = await ExternalLinks.launchBuyMeACoffee();
+    if (!mounted) return;
+    if (!launched) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open the support page. Please try again.'),
+        ),
+      );
     }
   }
 
@@ -522,6 +535,30 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
                       'This setting applies to both manual wallpaper updates '
                       'and automatic daily wallpaper generation.',
                       style: TextStyle(fontSize: 14, color: Colors.blue),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Support the Developer',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Enjoying the Bible Wallpaper app? Your support helps keep '
+                    'it free and allows me to continue improving it.',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    elevation: 2,
+                    child: ListTile(
+                      leading: const Icon(Icons.coffee_outlined, color: Colors.blue),
+                      title: const Text('Buy Me a Coffee'),
+                      subtitle: const Text('Zane Daily Faith'),
+                      trailing: const Icon(Icons.open_in_new, size: 18),
+                      onTap: _openSupportPage,
                     ),
                   ),
                   if (_isSaving)
