@@ -1,6 +1,6 @@
 {
-    "name": "zane_bible_lockscreen",
-    "short_name": "zane_bible_lockscreen",
+    "name": "DailyFaith",
+    "short_name": "DailyFaith",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

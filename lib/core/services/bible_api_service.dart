@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../models/bible_verse.dart';
-import '../utils/bible_metadata.dart';
+import '../utils/bible_topics.dart';
 
 class BibleApiService {
   static const String baseUrl =
@@ -12,12 +13,16 @@ class BibleApiService {
   static const Duration _timeout = Duration(seconds: 30);
   static const Duration _initialBackoff = Duration(seconds: 2);
 
-  Future<BibleVerse> fetchRandomVerse() async {
-    final passage = BibleMetadata.randomPassage();
+  /// [topicId] optional; e.g. "all" (default), "love", "hope". When not "all", picks from that topic's passages.
+  Future<BibleVerse> fetchRandomVerse({String? topicId}) async {
+    final passage = BibleTopics.getRandomPassageForTopic(topicId);
     final formatted = passage.replaceAll(' ', '+');
     final url = Uri.parse('$baseUrl$formatted');
 
-    print('[BibleApiService] Fetching verse: $passage');
+    developer.log(
+      'Fetching verse: $passage (topic: ${topicId ?? "all"})',
+      name: 'BibleApiService',
+    );
 
     return _retryWithBackoff(
       () => _fetchVerseWithTimeout(url),
@@ -27,7 +32,7 @@ class BibleApiService {
 
   Future<BibleVerse> _fetchVerseWithTimeout(Uri url) async {
     try {
-      print('[BibleApiService] Making HTTP request to: $url');
+      developer.log('Making HTTP request to: $url', name: 'BibleApiService');
 
       final response = await http
           .get(url)
@@ -41,7 +46,7 @@ class BibleApiService {
             },
           );
 
-      print('[BibleApiService] Response status: ${response.statusCode}');
+      developer.log('Response status: ${response.statusCode}', name: 'BibleApiService');
 
       if (response.statusCode != 200 || response.body.isEmpty) {
         throw Exception('Bible API returned status ${response.statusCode}');
@@ -54,12 +59,14 @@ class BibleApiService {
 
       final verse = data.first;
 
+      final rawText = (verse['text'] as String).trim();
+
       return BibleVerse(
         reference: '${verse['bookname']} ${verse['chapter']}:${verse['verse']}',
-        text: verse['text'],
+        text: rawText,
       );
     } catch (e) {
-      print('[BibleApiService] Error: $e');
+      developer.log('Error: $e', name: 'BibleApiService');
       rethrow;
     }
   }
@@ -72,17 +79,17 @@ class BibleApiService {
 
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        print('[BibleApiService] Attempt $attempt/$maxAttempts');
+        developer.log('Attempt $attempt/$maxAttempts', name: 'BibleApiService');
         return await operation();
       } catch (e) {
-        print('[BibleApiService] Attempt $attempt failed: $e');
+        developer.log('Attempt $attempt failed: $e', name: 'BibleApiService');
 
         if (attempt == maxAttempts) {
-          print('[BibleApiService] All retries exhausted');
+          developer.log('All retries exhausted', name: 'BibleApiService');
           rethrow;
         }
 
-        print('[BibleApiService] Retrying in ${backoff.inSeconds}s...');
+        developer.log('Retrying in ${backoff.inSeconds}s...', name: 'BibleApiService');
         await Future.delayed(backoff);
 
         // Exponential backoff: 2s, 4s, 8s

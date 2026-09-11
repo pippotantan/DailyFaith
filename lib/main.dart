@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,44 +16,43 @@ Future<void> main() async {
 
   await Workmanager().initialize(
     callbackDispatcher,
-    isInDebugMode: false, // Set to false for production
   );
 
   // Restore any previously scheduled tasks on app startup
   await _restoreScheduledTasks();
 
-  runApp(const ZaneBibleApp());
+  runApp(const DailyFaithApp());
 }
 
 Future<void> _requestPermissions() async {
   try {
-    print('[Main] Requesting permissions');
+    developer.log('Requesting permissions', name: 'Main');
 
     // Request storage permissions
     final storageStatus = await Permission.storage.request();
-    print('[Main] Storage permission: $storageStatus');
+    developer.log('Storage permission: $storageStatus', name: 'Main');
 
     // Request photos/media permission for Android 13+
     final photosStatus = await Permission.photos.request();
-    print('[Main] Photos permission: $photosStatus');
+    developer.log('Photos permission: $photosStatus', name: 'Main');
 
     // Request notification permission for Android 13+
     final notificationStatus = await Permission.notification.request();
-    print('[Main] Notification permission: $notificationStatus');
+    developer.log('Notification permission: $notificationStatus', name: 'Main');
 
     // Request background execution permission
     final scheduleExactAlarmStatus = await Permission.scheduleExactAlarm
         .request();
-    print('[Main] Schedule exact alarm permission: $scheduleExactAlarmStatus');
+    developer.log('Schedule exact alarm permission: $scheduleExactAlarmStatus', name: 'Main');
 
     // Request ignore battery optimizations for reliable background execution
     final batteryOptStatus = await Permission.ignoreBatteryOptimizations
         .request();
-    print('[Main] Ignore battery optimizations permission: $batteryOptStatus');
+    developer.log('Ignore battery optimizations permission: $batteryOptStatus', name: 'Main');
 
-    print('[Main] All permissions requested');
+    developer.log('All permissions requested', name: 'Main');
   } catch (e) {
-    print('[Main] Error requesting permissions: $e');
+    developer.log('Error requesting permissions: $e', name: 'Main');
   }
 }
 
@@ -63,13 +64,14 @@ Future<void> _restoreScheduledTasks() async {
     final minute = prefs.getInt('daily_scheduled_minute');
 
     if (isScheduled && hour != null && minute != null) {
-      print(
-        '[Main] Restoring scheduled task: $hour:${minute.toString().padLeft(2, '0')}',
+      developer.log(
+        'Restoring scheduled task: $hour:${minute.toString().padLeft(2, '0')}',
+        name: 'Main',
       );
       await WorkManagerService.scheduleDailyVerseAt(hour, minute);
-      print('[Main] Task restored successfully');
+      developer.log('Task restored successfully', name: 'Main');
     }
   } catch (e) {
-    print('[Main] Error restoring tasks: $e');
+    developer.log('Error restoring tasks: $e', name: 'Main');
   }
 }

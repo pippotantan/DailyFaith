@@ -1,16 +1,17 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
-import 'package:screenshot/screenshot.dart';
+import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:zane_bible_lockscreen/core/models/bible_verse.dart';
-import 'package:zane_bible_lockscreen/core/services/bible_api_service.dart';
+import 'package:zane_bible_lockscreen/core/services/background_provider.dart';
 import 'package:zane_bible_lockscreen/core/services/image_generation_service.dart';
+import 'package:zane_bible_lockscreen/core/services/settings_service.dart';
+import 'package:zane_bible_lockscreen/core/services/verse_repository.dart';
 import 'package:zane_bible_lockscreen/core/services/wallpaper_service.dart';
 import 'package:zane_bible_lockscreen/core/services/workmanager_service.dart';
-import 'package:zane_bible_lockscreen/core/services/settings_service.dart';
-import 'package:zane_bible_lockscreen/core/utils/image_saver.dart';
 import 'package:zane_bible_lockscreen/features/editor/verse_editor_controls.dart';
 import 'package:zane_bible_lockscreen/features/editor/verse_editor_state.dart';
-import '../../core/services/unsplash_service.dart';
-import '../../widgets/verse_background_preview.dart';
+import 'package:zane_bible_lockscreen/widgets/verse_background_preview.dart';
 
 class VerseScreen extends StatefulWidget {
   const VerseScreen({super.key});
@@ -20,9 +21,10 @@ class VerseScreen extends StatefulWidget {
 }
 
 class _VerseScreenState extends State<VerseScreen> {
-  final ScreenshotController screenshotController = ScreenshotController();
   BibleVerse? verse;
   String? backgroundUrl;
+  String? backgroundPath;
+  String? photoAttribution;
   bool loading = true;
   final editor = VerseEditorState();
   bool useForDaily = false;
@@ -53,7 +55,7 @@ class _VerseScreenState extends State<VerseScreen> {
         scheduledTime = schedTime;
       });
     } catch (e) {
-      print('[VerseScreen] Failed to load editor settings, using defaults: $e');
+      developer.log('Failed to load editor settings, using defaults: $e', name: 'VerseScreen');
       setState(() {
         editor.fontSize = 42;
         editor.textAlign = TextAlign.center;
@@ -69,30 +71,89 @@ class _VerseScreenState extends State<VerseScreen> {
   Future<void> loadVerse() async {
     setState(() => loading = true);
 
-    final bibleService = BibleApiService();
-    final unsplashService = UnsplashService();
+    final verseRepo = VerseRepository();
+    final topic = await SettingsService.getVerseTopic();
+    final keyword = await SettingsService.getBackgroundKeyword();
 
-    final verseResult = await bibleService.fetchRandomVerse();
-    final bgResult = await unsplashService.fetchRandomBackground();
+    try {
+      final verseResult = await verseRepo.fetchRandomVerse(topicId: topic);
+      final bgResult = await BackgroundProvider.fetchBackground(keywordId: keyword);
 
-    setState(() {
-      verse = verseResult;
-      backgroundUrl = bgResult;
-      loading = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        verse = verseResult;
+        backgroundUrl = bgResult?.imageUrl;
+        backgroundPath = bgResult?.localPath;
+        photoAttribution = bgResult?.attributionText;
+        loading = false;
+      });
+      if (bgResult == null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No background available. Add images in Settings or check your connection.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load: $e')),
+        );
+      }
+    }
   }
 
   Future<void> generateImage() async {
+    if (verse == null) return;
+    if (backgroundUrl == null && backgroundPath == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add a background in Settings to generate an image.'),
+        ),
+      );
+      return;
+    }
+
     try {
-      final service = ImageGenerationService();
-      final file = await service.generateImage(screenshotController);
+      final image = await ImageGenerationService.generateVerseImage(
+        backgroundUrl: backgroundUrl,
+        backgroundPath: backgroundPath,
+        verse: verse!.text,
+        reference: verse!.reference,
+        fontSize: editor.fontSize,
+        textAlign: editor.textAlign,
+        textColor: editor.textColor,
+        fontFamily: editor.fontFamily,
+        photoAttribution: photoAttribution,
+      );
+
+      final name = 'verse_${DateTime.now().millisecondsSinceEpoch}';
+      final result = await ImageGallerySaverPlus.saveImage(
+        image,
+        name: name,
+      );
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Image generated:\n${file.path}')));
+      final isSuccess = result['isSuccess'] == true;
+      if (isSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Image saved to gallery')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to save to gallery: ${result['error'] ?? 'Permission denied or storage unavailable'}',
+            ),
+          ),
+        );
+      }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to generate image: $e')));
@@ -100,17 +161,36 @@ class _VerseScreenState extends State<VerseScreen> {
   }
 
   Future<void> generateAndSetWallpaper() async {
+    if (verse == null) return;
+    if (backgroundUrl == null && backgroundPath == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add a background in Settings to set wallpaper.'),
+        ),
+      );
+      return;
+    }
+
     try {
-      final image = await screenshotController.capture(
-        delay: const Duration(milliseconds: 200),
+      final image = await ImageGenerationService.generateVerseImage(
+        backgroundUrl: backgroundUrl,
+        backgroundPath: backgroundPath,
+        verse: verse!.text,
+        reference: verse!.reference,
+        fontSize: editor.fontSize,
+        textAlign: editor.textAlign,
+        textColor: editor.textColor,
+        fontFamily: editor.fontFamily,
+        photoAttribution: photoAttribution,
       );
 
-      if (image == null) return;
+      final file = await ImageGenerationService.saveImage(
+        image,
+        'manual_verse.png',
+      );
 
-      final file = await ImageSaver.saveImage(image);
-
-      // Use user’s wallpaper target preference
       final target = await SettingsService.getWallpaperTarget();
+
       int location = WallpaperService.lockScreen;
       if (target == WallpaperTarget.homeScreenOnly) {
         location = WallpaperService.homeScreen;
@@ -137,21 +217,19 @@ class _VerseScreenState extends State<VerseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: loading || verse == null || backgroundUrl == null
+      body: loading || verse == null
           ? const Center(child: CircularProgressIndicator())
           : Stack(
               children: [
-                Screenshot(
-                  controller: screenshotController,
-                  child: VerseBackgroundPreview(
-                    imageUrl: backgroundUrl!,
-                    verse: verse!.text,
-                    reference: verse!.reference,
-                    fontSize: editor.fontSize,
-                    textAlign: editor.textAlign,
-                    textColor: editor.textColor,
-                    fontFamily: editor.fontFamily, // ← real font name
-                  ),
+                VerseBackgroundPreview(
+                  imageUrl: backgroundUrl,
+                  localPath: backgroundPath,
+                  verse: verse!.text,
+                  reference: verse!.reference,
+                  fontSize: editor.fontSize,
+                  textAlign: editor.textAlign,
+                  textColor: editor.textColor,
+                  fontFamily: editor.fontFamily,
                 ),
 
                 Positioned(
