@@ -215,6 +215,21 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
     }
   }
 
+  Future<void> _openPrivacyPolicy() async {
+    final launched = await ExternalLinks.launchPrivacyPolicy();
+    if (!mounted) return;
+    if (!launched) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Privacy policy is not available. Host docs/privacy-policy.md and '
+            'set PRIVACY_POLICY_URL in your build configuration.',
+          ),
+        ),
+      );
+    }
+  }
+
   Widget _buildRadioCard({
     required String title,
     required String subtitle,
@@ -540,6 +555,27 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
                   const SizedBox(height: 24),
                   const Divider(),
                   const SizedBox(height: 16),
+                  const Text(
+                    'Privacy & Support',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Zane Daily Faith — faith-based apps and resources.',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    elevation: 2,
+                    child: ListTile(
+                      leading: const Icon(Icons.privacy_tip_outlined, color: Colors.blue),
+                      title: const Text('Privacy Policy'),
+                      subtitle: const Text('How DailyFaith handles your data'),
+                      trailing: const Icon(Icons.open_in_new, size: 18),
+                      onTap: _openPrivacyPolicy,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   const Text(
                     'Support the Developer',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),

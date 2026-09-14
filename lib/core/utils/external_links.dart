@@ -1,4 +1,5 @@
 import 'package:url_launcher/url_launcher.dart';
+import 'package:zane_bible_lockscreen/core/config/app_secrets.dart';
 
 /// External URLs opened from the app (browser only — no in-app payments).
 class ExternalLinks {
@@ -17,5 +18,20 @@ class ExternalLinks {
       buyMeACoffeeUrl,
       mode: LaunchMode.externalApplication,
     );
+  }
+
+  /// Opens the hosted privacy policy when [AppSecrets.privacyPolicyUrl] is set.
+  static Future<bool> launchPrivacyPolicy() async {
+    if (!AppSecrets.hasPrivacyPolicyUrl) {
+      return false;
+    }
+    final uri = Uri.tryParse(AppSecrets.privacyPolicyUrl);
+    if (uri == null || !uri.isScheme('https')) {
+      return false;
+    }
+    if (!await canLaunchUrl(uri)) {
+      return false;
+    }
+    return launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }

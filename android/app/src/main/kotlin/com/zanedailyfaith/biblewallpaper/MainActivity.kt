@@ -1,4 +1,4 @@
-package com.example.zane_bible_lockscreen
+package com.zanedailyfaith.biblewallpaper
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -17,7 +17,7 @@ import android.provider.MediaStore
 import java.io.IOException
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.example.zane_bible_lockscreen/wallpaper"
+    private val CHANNEL = "com.zanedailyfaith.biblewallpaper/wallpaper"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

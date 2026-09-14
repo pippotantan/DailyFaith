@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:zane_bible_lockscreen/core/config/app_channels.dart';
 
 class WallpaperService {
-  static const _channel =
-      MethodChannel('com.example.zane_bible_lockscreen/wallpaper');
+  static const _channel = MethodChannel(AppChannels.wallpaper);
 
   static const String lockScreen = 'lockScreen';
   static const String homeScreen = 'homeScreen';

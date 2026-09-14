@@ -1,10 +1,8 @@
-import 'dart:typed_data';
-
 import 'package:flutter/services.dart';
+import 'package:zane_bible_lockscreen/core/config/app_channels.dart';
 
 class GalleryService {
-  static const _channel =
-      MethodChannel('com.example.zane_bible_lockscreen/wallpaper');
+  static const _channel = MethodChannel(AppChannels.wallpaper);
 
   static Future<Map<dynamic, dynamic>> saveImage(
     Uint8List bytes, {

@@ -41,7 +41,11 @@ DailyFaith turns your lock screen and home screen into a daily dose of Scripture
 
 1. Clone the repo and open the project.
 2. Run `flutter pub get`.
-3. Run the app: `flutter run`, or build a release APK: `flutter build apk --release`.
+3. Copy `dart_defines.json.example` to `dart_defines.json` and set `PEXELS_API_KEY` (required for Pexels backgrounds).
+4. Run the app: `flutter run --dart-define-from-file=dart_defines.json`.
+
+For Google Play release signing, Pexels configuration, and privacy policy hosting, see **[docs/GOOGLE_PLAY_RELEASE.md](docs/GOOGLE_PLAY_RELEASE.md)**.  
+Privacy policy source: **[docs/privacy-policy.md](docs/privacy-policy.md)**.
 
 ## Project Structure
 
