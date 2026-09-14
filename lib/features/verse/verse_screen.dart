@@ -1,7 +1,7 @@
 import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
-import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
+import 'package:zane_bible_lockscreen/core/services/gallery_service.dart';
 import 'package:zane_bible_lockscreen/core/models/bible_verse.dart';
 import 'package:zane_bible_lockscreen/core/services/background_provider.dart';
 import 'package:zane_bible_lockscreen/core/services/image_generation_service.dart';
@@ -131,7 +131,7 @@ class _VerseScreenState extends State<VerseScreen> {
       );
 
       final name = 'verse_${DateTime.now().millisecondsSinceEpoch}';
-      final result = await ImageGallerySaverPlus.saveImage(
+      final result = await GalleryService.saveImage(
         image,
         name: name,
       );
@@ -191,7 +191,7 @@ class _VerseScreenState extends State<VerseScreen> {
 
       final target = await SettingsService.getWallpaperTarget();
 
-      int location = WallpaperService.lockScreen;
+      var location = WallpaperService.lockScreen;
       if (target == WallpaperTarget.homeScreenOnly) {
         location = WallpaperService.homeScreen;
       } else if (target == WallpaperTarget.both) {

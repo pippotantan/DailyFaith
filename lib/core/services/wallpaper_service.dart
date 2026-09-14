@@ -1,18 +1,31 @@
 import 'dart:io';
-import 'package:wallpaper_manager_flutter/wallpaper_manager_flutter.dart';
+
+import 'package:flutter/services.dart';
+import 'package:zane_bible_lockscreen/core/config/app_channels.dart';
 
 class WallpaperService {
-  static const int homeScreen = WallpaperManagerFlutter.homeScreen;
-  static const int lockScreen = WallpaperManagerFlutter.lockScreen;
-  static const int both = WallpaperManagerFlutter.bothScreens;
+  static const _channel = MethodChannel(AppChannels.wallpaper);
+
+  static const String lockScreen = 'lockScreen';
+  static const String homeScreen = 'homeScreen';
+  static const String both = 'both';
 
   static Future<void> setWallpaper(
     File imageFile, {
-    int location = both,
+    String location = both,
   }) async {
-    await WallpaperManagerFlutter().setWallpaper(
-      imageFile,
-      location,
+    final ok = await _channel.invokeMethod<bool>(
+      'setWallpaper',
+      {
+        'path': imageFile.path,
+        'location': location,
+      },
     );
+    if (ok != true) {
+      throw PlatformException(
+        code: 'WALLPAPER_ERROR',
+        message: 'Failed to set wallpaper',
+      );
+    }
   }
 }
