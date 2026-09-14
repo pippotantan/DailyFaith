@@ -17,6 +17,7 @@ class WorkManagerService {
   static Future<void> cancelDailyVerse() async {
     developer.log('Cancelling daily verse task', name: 'WorkManagerService');
     await Workmanager().cancelByUniqueName(_taskKey);
+    await resetDailyWallpaperRetryCount();
     developer.log('Daily verse task cancelled', name: 'WorkManagerService');
   }
 
@@ -37,6 +38,7 @@ class WorkManagerService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_scheduledHourKey, hour);
       await prefs.setInt(_scheduledMinuteKey, minute);
+      await resetDailyWallpaperRetryCount();
       developer.log('Saved scheduled time to SharedPreferences', name: 'WorkManagerService');
 
       // Cancel existing task before registering new one
@@ -47,10 +49,10 @@ class WorkManagerService {
         name: 'WorkManagerService',
       );
 
-      // Use registerOneOffTask with exact time instead of periodic
-      // This ensures execution at the exact scheduled time
+      // One-off WorkManager job aimed at the user-selected target time.
+      // Execution is inexact: Android may delay it (Doze, standby, OEM power management).
       await Workmanager().registerOneOffTask(
-        _taskKey,
+        dailyVerseUniqueName,
         dailyVerseTask,
         initialDelay: initial,
         constraints: Constraints(

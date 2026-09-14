@@ -1,6 +1,6 @@
 # Privacy Policy — DailyFaith (Bible Wallpaper)
 
-**Last updated:** September 13, 2026  
+**Last updated:** September 14, 2026
 **App name:** DailyFaith  
 **Developer / project:** Zane Daily Faith  
 **Android application ID:** `com.zanedailyfaith.biblewallpaper`
@@ -75,14 +75,14 @@ The App, as provided by Zane Daily Faith, does **not**:
 
 ## Permissions
 
-The App may request Android permissions needed for its features, such as:
+The App may use Android permissions needed for its features, such as:
 
 - **Internet** — online verses and Pexels backgrounds
 - **Set wallpaper** — apply generated wallpapers
-- **Photos / media** — select gallery images for backgrounds
-- **Notifications** — related to scheduling (where applicable on your device)
-- **Exact alarm / background work** — optional scheduled daily wallpaper updates via WorkManager
-- **Battery optimization exemption** — optional, to improve reliability of scheduled updates
+- **Photos / media (system picker)** — you choose gallery images in the system photo picker; the App copies them into private storage. The App does not request persistent photo-library access.
+- **Background work** — optional daily wallpaper updates via Android WorkManager, aimed at a time you select. Execution is inexact; Android may delay the job to save battery.
+
+The App does not use exact alarms, does not request battery-optimization exemption, and does not show user-facing notifications.
 
 You can deny permissions; some features may not work without them.
 

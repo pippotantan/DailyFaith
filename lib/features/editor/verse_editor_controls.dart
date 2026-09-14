@@ -320,7 +320,7 @@ class _VerseEditorControlsState extends State<VerseEditorControls> {
                 Padding(
                   padding: const EdgeInsets.only(top: 6.0),
                   child: Text(
-                    'Scheduled at ${widget.scheduledTime!.format(context)}',
+                    'Around ${widget.scheduledTime!.format(context)} each day',
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ),

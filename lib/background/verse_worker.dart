@@ -6,10 +6,13 @@ import 'package:workmanager/workmanager.dart';
 import 'package:zane_bible_lockscreen/core/services/auto_wallpaper_service.dart';
 
 const dailyVerseTask = 'dailyVerseWallpaper';
+const dailyVerseUniqueName = 'dailyVerseTask';
 
 // Keys must match what SettingsService uses
 const _scheduledHourKey = 'daily_scheduled_hour';
 const _scheduledMinuteKey = 'daily_scheduled_minute';
+const _retryCountKey = 'daily_wallpaper_retry_count';
+const _maxRetries = 3;
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -32,14 +35,13 @@ void callbackDispatcher() {
             success = true;
           } catch (e) {
             developer.log('AutoWallpaperService.run() failed: $e', name: 'BackgroundWorker');
-            developer.log('Will reschedule for retry in 2 minutes', name: 'BackgroundWorker');
           }
 
-          // Reschedule: if successful, schedule for next day; if failed, retry in 2 minutes
           if (success) {
+            await resetDailyWallpaperRetryCount();
             await _rescheduleForNextDay();
           } else {
-            await _rescheduleForRetry();
+            await _scheduleBoundedRetryOrNextDay();
           }
           break;
         default:
@@ -49,15 +51,59 @@ void callbackDispatcher() {
       return Future.value(true);
     } catch (e, stackTrace) {
       developer.log('Task error: $e', name: 'BackgroundWorker', stackTrace: stackTrace);
-      // Try to reschedule for retry in 2 minutes on error
       try {
-        await _rescheduleForRetry();
+        await _scheduleBoundedRetryOrNextDay();
       } catch (rescheduleError) {
         developer.log('Failed to reschedule: $rescheduleError', name: 'BackgroundWorker');
       }
       return Future.value(true);
     }
   });
+}
+
+/// Clears retry state so the next daily cycle starts at zero.
+Future<void> resetDailyWallpaperRetryCount() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt(_retryCountKey, 0);
+}
+
+Future<int> _retryCount() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getInt(_retryCountKey) ?? 0;
+}
+
+Duration _delayForRetryAttempt(int attempt) {
+  switch (attempt) {
+    case 1:
+      return const Duration(minutes: 15);
+    case 2:
+      return const Duration(minutes: 30);
+    default:
+      return const Duration(minutes: 15);
+  }
+}
+
+Future<void> _scheduleBoundedRetryOrNextDay() async {
+  final current = await _retryCount();
+  final nextAttempt = current + 1;
+  if (nextAttempt > _maxRetries) {
+    developer.log(
+      'Retry limit reached ($current/$_maxRetries); deferring to next daily schedule',
+      name: 'BackgroundWorker',
+    );
+    await resetDailyWallpaperRetryCount();
+    await _rescheduleForNextDay();
+    return;
+  }
+
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt(_retryCountKey, nextAttempt);
+  final delay = _delayForRetryAttempt(nextAttempt);
+  developer.log(
+    'Scheduling retry $nextAttempt/$_maxRetries in ${delay.inMinutes} minutes',
+    name: 'BackgroundWorker',
+  );
+  await _registerOneOff(delay);
 }
 
 Future<void> _rescheduleForNextDay() async {
@@ -98,58 +144,26 @@ Future<void> _rescheduleForNextDay() async {
       name: 'BackgroundWorker',
     );
 
-    await Workmanager().registerOneOffTask(
-      'dailyVerseTask',
-      'dailyVerseWallpaper',
-      initialDelay: delay,
-      constraints: Constraints(
-        networkType: NetworkType.notRequired,
-        requiresBatteryNotLow: false,
-        requiresDeviceIdle: false,
-        requiresStorageNotLow: false,
-      ),
-      backoffPolicy: BackoffPolicy.exponential,
-      backoffPolicyDelay: const Duration(minutes: 15),
-      existingWorkPolicy: ExistingWorkPolicy.replace,
-    );
-
+    await _registerOneOff(delay);
     developer.log('Successfully rescheduled task', name: 'BackgroundWorker');
   } catch (e, stackTrace) {
     developer.log('Error rescheduling: $e', name: 'BackgroundWorker', stackTrace: stackTrace);
   }
 }
 
-/// Reschedules the wallpaper update task for 2 minutes from now (for transient failures)
-Future<void> _rescheduleForRetry() async {
-  try {
-    developer.log('Rescheduling task for retry in 2 minutes', name: 'BackgroundWorker');
-
-    final delay = const Duration(minutes: 2);
-
-    await Workmanager().registerOneOffTask(
-      'dailyVerseTask',
-      'dailyVerseWallpaper',
-      initialDelay: delay,
-      constraints: Constraints(
-        networkType: NetworkType.notRequired,
-        requiresBatteryNotLow: false,
-        requiresDeviceIdle: false,
-        requiresStorageNotLow: false,
-      ),
-      backoffPolicy: BackoffPolicy.exponential,
-      backoffPolicyDelay: const Duration(minutes: 15),
-      existingWorkPolicy: ExistingWorkPolicy.replace,
-    );
-
-    developer.log(
-      'Successfully rescheduled task for retry in 2 minutes',
-      name: 'BackgroundWorker',
-    );
-  } catch (e, stackTrace) {
-    developer.log(
-      'Error rescheduling for retry: $e',
-      name: 'BackgroundWorker',
-      stackTrace: stackTrace,
-    );
-  }
+Future<void> _registerOneOff(Duration delay) async {
+  await Workmanager().registerOneOffTask(
+    dailyVerseUniqueName,
+    dailyVerseTask,
+    initialDelay: delay,
+    constraints: Constraints(
+      networkType: NetworkType.notRequired,
+      requiresBatteryNotLow: false,
+      requiresDeviceIdle: false,
+      requiresStorageNotLow: false,
+    ),
+    backoffPolicy: BackoffPolicy.exponential,
+    backoffPolicyDelay: const Duration(minutes: 15),
+    existingWorkPolicy: ExistingWorkPolicy.replace,
+  );
 }

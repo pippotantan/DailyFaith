@@ -23,7 +23,7 @@ DailyFaith turns your lock screen and home screen into a daily dose of Scripture
 
 ### Wallpaper Updates
 - **Manual** — Set the current verse + image as your wallpaper with one tap.
-- **Scheduled** — Daily refresh at a time you choose (e.g. each morning). Uses WorkManager for reliable background execution.
+- **Scheduled** — Daily refresh around a time you choose (e.g. each morning). Uses Android WorkManager; the job may run later than the selected target time depending on Doze, app standby, and OEM power management.
 - **Capture preview** — Save the current design as an image without setting it as wallpaper.
 
 ### Offline Support
@@ -35,7 +35,7 @@ DailyFaith turns your lock screen and home screen into a daily dose of Scripture
 - Flutter SDK ^3.9.2 (see `pubspec.yaml`)
 - Android (tested); iOS and other platforms may need configuration
 - Network access for verses and images (when using online sources)
-- Permissions: wallpaper, storage/media (for setting wallpaper and gallery), notifications and exact alarm (for scheduled updates)
+- Permissions: wallpaper. Daily scheduled updates use Android WorkManager (inexact; Android may delay them).
 
 ## Getting Started
 
