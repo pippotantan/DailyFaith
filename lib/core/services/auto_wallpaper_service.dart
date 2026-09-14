@@ -1,7 +1,7 @@
 import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
-import 'package:wallpaper_manager_flutter/wallpaper_manager_flutter.dart';
+import 'package:zane_bible_lockscreen/core/services/wallpaper_service.dart';
 import 'package:zane_bible_lockscreen/core/models/bible_verse.dart';
 import 'package:zane_bible_lockscreen/core/services/background_provider.dart';
 import 'package:zane_bible_lockscreen/core/services/image_generation_service.dart';
@@ -100,15 +100,7 @@ class AutoWallpaperService {
       bool wallpaperSet = false;
 
       try {
-        int location = WallpaperManagerFlutter.lockScreen;
-
-        if (locationStr == 'homeScreen') {
-          location = WallpaperManagerFlutter.homeScreen;
-        } else if (locationStr == 'both') {
-          location = WallpaperManagerFlutter.bothScreens;
-        }
-
-        await WallpaperManagerFlutter().setWallpaper(file, location);
+        await WallpaperService.setWallpaper(file, location: locationStr);
 
         wallpaperSet = true;
         developer.log('Wallpaper set successfully', name: 'AutoWallpaperService');

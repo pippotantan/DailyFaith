@@ -1,0 +1,13 @@
+# Copy this file to android/key.properties (gitignored) and fill in local values.
+# Do NOT commit key.properties or your .jks keystore.
+#
+# Generate an upload keystore (run locally once):
+#   keytool -genkey -v \
+#     -keystore "$HOME/.android/zane-daily-faith-upload.jks" \
+#     -keyalg RSA -keysize 2048 -validity 10000 \
+#     -alias upload
+#
+storePassword=YOUR_SECURE_PASSWORD
+keyPassword=YOUR_SECURE_PASSWORD
+keyAlias=upload
+storeFile=/Users/YOUR_USERNAME/.android/zane-daily-faith-upload.jks

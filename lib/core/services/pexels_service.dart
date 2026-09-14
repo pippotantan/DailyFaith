@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:math';
 import 'package:http/http.dart' as http;
+import 'package:zane_bible_lockscreen/core/config/app_secrets.dart';
 import '../utils/background_keywords.dart';
 
 /// Result of a random Pexels photo.
@@ -18,9 +19,6 @@ class PexelsPhotoResult {
 }
 
 class PexelsService {
-  static const String _apiKey =
-      '49usv2qBrCsJUchqA3tay3SL5NgSzSOAI5gPRO5uW8wjRHgV4HH9RMNk';
-
   static const String _searchUrl = 'https://api.pexels.com/v1/search';
 
   static const int _maxRetries = 5;
@@ -53,6 +51,13 @@ class PexelsService {
   }
 
   Future<PexelsPhotoResult> _fetchPhotoWithTimeout(String? keywordId) async {
+    if (!AppSecrets.hasPexelsApiKey) {
+      throw Exception(
+        'Pexels API key is not configured. '
+        'Set PEXELS_API_KEY via --dart-define or --dart-define-from-file.',
+      );
+    }
+
     try {
       final query = _queryFor(keywordId ?? BackgroundKeywords.all);
       final page = 1 + _random.nextInt(10);
@@ -63,7 +68,7 @@ class PexelsService {
       final response = await http
           .get(
             Uri.parse(endpoint),
-            headers: {'Authorization': _apiKey},
+            headers: {'Authorization': AppSecrets.pexelsApiKey},
           )
           .timeout(
             _timeout,
