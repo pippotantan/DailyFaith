@@ -28,12 +28,22 @@ Future<void> _restoreScheduledTasks() async {
     final minute = prefs.getInt('daily_scheduled_minute');
 
     if (isScheduled && hour != null && minute != null) {
+      final pending = await Workmanager().isScheduledByUniqueName(
+        dailyVerseUniqueName,
+      );
+      if (pending) {
+        developer.log(
+          'Pending daily work already exists; not replacing on launch',
+          name: 'DailyFaithSchedule',
+        );
+        return;
+      }
       developer.log(
         'Restoring scheduled task: $hour:${minute.toString().padLeft(2, '0')}',
-        name: 'Main',
+        name: 'DailyFaithSchedule',
       );
       await WorkManagerService.scheduleDailyVerseAt(hour, minute);
-      developer.log('Task restored successfully', name: 'Main');
+      developer.log('Task restored successfully', name: 'DailyFaithSchedule');
     }
   } catch (e) {
     developer.log('Error restoring tasks: $e', name: 'Main');

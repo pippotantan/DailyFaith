@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -14,18 +15,31 @@ class WallpaperService {
     File imageFile, {
     String location = both,
   }) async {
-    final ok = await _channel.invokeMethod<bool>(
-      'setWallpaper',
-      {
-        'path': imageFile.path,
-        'location': location,
-      },
+    developer.log(
+      'Invoking setWallpaper location=$location path=${imageFile.path}',
+      name: 'DailyFaithWallpaper',
     );
-    if (ok != true) {
-      throw PlatformException(
-        code: 'WALLPAPER_ERROR',
-        message: 'Failed to set wallpaper',
+    try {
+      final ok = await _channel.invokeMethod<bool>(
+        'setWallpaper',
+        {
+          'path': imageFile.path,
+          'location': location,
+        },
       );
+      if (ok != true) {
+        throw PlatformException(
+          code: 'WALLPAPER_ERROR',
+          message: 'Failed to set wallpaper',
+        );
+      }
+    } on MissingPluginException catch (e, stackTrace) {
+      developer.log(
+        'Wallpaper MethodChannel is not registered on this engine: $e',
+        name: 'DailyFaithWallpaper',
+        stackTrace: stackTrace,
+      );
+      rethrow;
     }
   }
 }

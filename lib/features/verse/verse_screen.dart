@@ -296,7 +296,8 @@ class _VerseScreenState extends State<VerseScreen> {
                         await generateAndSetWallpaper(),
                     onScheduleAt: (time) async {
                       // schedule with WorkManager for chosen time
-                      await WorkManagerService.scheduleDailyVerseAt(
+                      final nextRunText =
+                          await WorkManagerService.scheduleDailyVerseAt(
                         time.hour,
                         time.minute,
                       );
@@ -309,6 +310,10 @@ class _VerseScreenState extends State<VerseScreen> {
                         isScheduled = true;
                         scheduledTime = time;
                       });
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(nextRunText)),
+                      );
                     },
                     onCancelSchedule: () async {
                       await WorkManagerService.cancelDailyVerse();

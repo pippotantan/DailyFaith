@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import androidx.concurrent.futures.CallbackToFutureAdapter
 import androidx.work.ListenableWorker
 import androidx.work.WorkerParameters
@@ -45,6 +46,7 @@ class BackgroundWorker(
          * forever (see #732).
          */
         const val DART_INITIALIZATION_TIMEOUT_MILLIS = 30_000L
+        private const val TAG = "DailyFaithSchedule"
     }
 
     private val payload
@@ -131,6 +133,7 @@ class BackgroundWorker(
         ) {
             engine = FlutterEngine(applicationContext)
             engine?.let { engine ->
+                registerHostAppPlugins(engine)
                 // Bind this worker to the plugin instance attached to this
                 // worker's engine, so progress reported from the Dart task
                 // can be routed back to this worker.
@@ -449,6 +452,28 @@ class BackgroundWorker(
                     stopEngine(Result.failure(), exception?.message)
                 }
             }
+        }
+    }
+
+    /**
+     * Registers host-app plugins that are not in GeneratedPluginRegistrant.
+     *
+     * DailyFaith's wallpaper MethodChannel lives in the app module, so the
+     * background [FlutterEngine] would otherwise have no wallpaper handler.
+     * Lookup is by class name so this worker stays usable without the app class.
+     */
+    private fun registerHostAppPlugins(engine: FlutterEngine) {
+        try {
+            val registrant = Class.forName(
+                "com.zanedailyfaith.biblewallpaper.DailyFaithPluginRegistrant",
+            )
+            val register = registrant.getMethod("registerWith", FlutterEngine::class.java)
+            register.invoke(null, engine)
+            Log.i(TAG, "Registered host-app plugins on background FlutterEngine")
+        } catch (_: ClassNotFoundException) {
+            // Host app did not supply a background plugin registrant.
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to register host-app plugins on background FlutterEngine", e)
         }
     }
 }

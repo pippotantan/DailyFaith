@@ -23,8 +23,9 @@ class AutoWallpaperService {
       final bgResult = await BackgroundProvider.fetchBackground(keywordId: keyword);
 
       if (bgResult == null) {
-        developer.log('No background available. Skipping.', name: 'AutoWallpaperService');
-        return;
+        throw Exception(
+          'No background available for scheduled wallpaper (Pexels failed and no local images).',
+        );
       }
 
       // ✅ 4. Load editor settings (always)
@@ -96,22 +97,21 @@ class AutoWallpaperService {
             : 'both';
       } catch (_) {}
 
-      // ✅ 9. Set wallpaper
-      bool wallpaperSet = false;
-
+      // 9. Set wallpaper (MethodChannel is registered on the WorkManager engine
+      // via WallpaperPlugin; missing-plugin failures must surface as retries.)
       try {
         await WallpaperService.setWallpaper(file, location: locationStr);
-
-        wallpaperSet = true;
-        developer.log('Wallpaper set successfully', name: 'AutoWallpaperService');
-      } catch (e) {
-        developer.log('Wallpaper plugin failed: $e', name: 'AutoWallpaperService');
-      }
-
-      if (wallpaperSet) {
-        developer.log('Wallpaper set successfully', name: 'AutoWallpaperService');
-      } else {
-        developer.log('Wallpaper may not have been set', name: 'AutoWallpaperService');
+        developer.log(
+          'Wallpaper set successfully location=$locationStr path=${file.path}',
+          name: 'DailyFaithWallpaper',
+        );
+      } catch (e, stackTrace) {
+        developer.log(
+          'Wallpaper set failed location=$locationStr: $e',
+          name: 'DailyFaithWallpaper',
+          stackTrace: stackTrace,
+        );
+        rethrow;
       }
     } catch (e, stackTrace) {
       developer.log('ERROR: $e', name: 'AutoWallpaperService', stackTrace: stackTrace);

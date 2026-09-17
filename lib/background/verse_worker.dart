@@ -21,20 +21,20 @@ void callbackDispatcher() {
     WidgetsFlutterBinding.ensureInitialized();
 
     try {
-      developer.log('Task received: $task', name: 'BackgroundWorker');
+      developer.log('Task received: $task', name: 'DailyFaithSchedule');
       switch (task) {
         case dailyVerseTask:
-          developer.log('Starting AutoWallpaperService.run()', name: 'BackgroundWorker');
+          developer.log('Starting AutoWallpaperService.run()', name: 'DailyFaithSchedule');
           bool success = false;
           try {
             await AutoWallpaperService.run();
             developer.log(
               'AutoWallpaperService.run() completed successfully',
-              name: 'BackgroundWorker',
+              name: 'DailyFaithSchedule',
             );
             success = true;
           } catch (e) {
-            developer.log('AutoWallpaperService.run() failed: $e', name: 'BackgroundWorker');
+            developer.log('AutoWallpaperService.run() failed: $e', name: 'DailyFaithSchedule');
           }
 
           if (success) {
