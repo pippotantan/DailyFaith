@@ -14,9 +14,10 @@ class WallpaperService {
   static Future<void> setWallpaper(
     File imageFile, {
     String location = both,
+    bool fitHomeToDisplay = false,
   }) async {
     developer.log(
-      'Invoking setWallpaper location=$location path=${imageFile.path}',
+      'Invoking setWallpaper location=$location fitHomeToDisplay=$fitHomeToDisplay path=${imageFile.path}',
       name: 'DailyFaithWallpaper',
     );
     try {
@@ -25,6 +26,7 @@ class WallpaperService {
         {
           'path': imageFile.path,
           'location': location,
+          'fitHomeToDisplay': fitHomeToDisplay,
         },
       );
       if (ok != true) {

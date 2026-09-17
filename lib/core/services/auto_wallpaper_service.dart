@@ -100,7 +100,14 @@ class AutoWallpaperService {
       // 9. Set wallpaper (MethodChannel is registered on the WorkManager engine
       // via WallpaperPlugin; missing-plugin failures must surface as retries.)
       try {
-        await WallpaperService.setWallpaper(file, location: locationStr);
+        // Background FLAG_SYSTEM has no Activity window token, so OEM home
+        // crop/offsets left-align a scrollable wallpaper. Fit home to the
+        // display; lock and the manual path keep the existing setStream crop.
+        await WallpaperService.setWallpaper(
+          file,
+          location: locationStr,
+          fitHomeToDisplay: true,
+        );
         developer.log(
           'Wallpaper set successfully location=$locationStr path=${file.path}',
           name: 'DailyFaithWallpaper',

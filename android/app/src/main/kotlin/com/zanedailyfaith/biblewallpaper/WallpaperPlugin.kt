@@ -6,8 +6,12 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Rect
+import android.view.WindowManager
 import androidx.annotation.Keep
+import androidx.annotation.RequiresApi
 import android.media.MediaScannerConnection
+import kotlin.math.roundToInt
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -55,13 +59,17 @@ class WallpaperPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             "setWallpaper" -> {
                 val path = call.argument<String>("path")
                 val location = call.argument<String>("location") ?: "lockScreen"
+                val fitHomeToDisplay = call.argument<Boolean>("fitHomeToDisplay") ?: false
                 if (path == null) {
                     result.error("INVALID_ARGS", "Path argument is required", null)
                     return
                 }
                 try {
-                    setWallpaperFromPath(context, path, location)
-                    Log.i(TAG, "setWallpaper succeeded location=$location")
+                    setWallpaperFromPath(context, path, location, fitHomeToDisplay)
+                    Log.i(
+                        TAG,
+                        "setWallpaper succeeded location=$location fitHomeToDisplay=$fitHomeToDisplay",
+                    )
                     result.success(true)
                 } catch (e: Exception) {
                     Log.e(TAG, "setWallpaper failed location=$location", e)
@@ -110,7 +118,12 @@ class WallpaperPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         const val CHANNEL = "com.zanedailyfaith.biblewallpaper/wallpaper"
         private const val TAG = "DailyFaithWallpaper"
 
-        fun setWallpaperFromPath(context: Context, path: String, location: String) {
+        fun setWallpaperFromPath(
+            context: Context,
+            path: String,
+            location: String,
+            fitHomeToDisplay: Boolean = false,
+        ) {
             val file = File(path)
             if (!file.exists()) {
                 throw IllegalArgumentException("Wallpaper file not found: $path")
@@ -119,9 +132,19 @@ class WallpaperPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 when (location) {
                     "lockScreen" -> applyStream(wallpaperManager, file, WallpaperManager.FLAG_LOCK)
-                    "homeScreen" -> applyStream(wallpaperManager, file, WallpaperManager.FLAG_SYSTEM)
+                    "homeScreen" -> applySystemWallpaper(
+                        context,
+                        wallpaperManager,
+                        file,
+                        fitHomeToDisplay,
+                    )
                     "both" -> {
-                        applyStream(wallpaperManager, file, WallpaperManager.FLAG_SYSTEM)
+                        applySystemWallpaper(
+                            context,
+                            wallpaperManager,
+                            file,
+                            fitHomeToDisplay,
+                        )
                         applyStream(wallpaperManager, file, WallpaperManager.FLAG_LOCK)
                     }
                     else -> applyStream(wallpaperManager, file, WallpaperManager.FLAG_LOCK)
@@ -132,6 +155,104 @@ class WallpaperPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     wallpaperManager.setStream(stream)
                 }
             }
+        }
+
+        @RequiresApi(Build.VERSION_CODES.N)
+        private fun applySystemWallpaper(
+            context: Context,
+            wallpaperManager: WallpaperManager,
+            file: File,
+            fitHomeToDisplay: Boolean,
+        ) {
+            if (fitHomeToDisplay) {
+                applySystemFittedToDisplay(context, wallpaperManager, file)
+            } else {
+                applyStream(wallpaperManager, file, WallpaperManager.FLAG_SYSTEM)
+            }
+        }
+
+        /**
+         * Home wallpaper ([WallpaperManager.FLAG_SYSTEM]) is a scrollable surface.
+         * [WallpaperManager.setStream] with a null crop hint lets the OEM pick the
+         * initial viewport. From a foreground Activity the launcher usually centers
+         * it; from a WorkManager [android.content.Context] there is no window token,
+         * so Samsung One UI often leaves the offset at 0 (left). The verse, which is
+         * centered in a 1080-wide image, is then cropped on the right.
+         *
+         * Fitting the bitmap to the real display size makes FLAG_SYSTEM a 1:1 screen
+         * wallpaper so the offset no longer matters. Lock screen is unchanged.
+         */
+        @RequiresApi(Build.VERSION_CODES.N)
+        private fun applySystemFittedToDisplay(
+            context: Context,
+            wallpaperManager: WallpaperManager,
+            file: File,
+        ) {
+            val (destW, destH) = displaySize(context)
+            if (destW <= 0 || destH <= 0) {
+                Log.w(TAG, "Display size unavailable (${destW}x${destH}); using default home crop")
+                applyStream(wallpaperManager, file, WallpaperManager.FLAG_SYSTEM)
+                return
+            }
+
+            val original = BitmapFactory.decodeFile(file.absolutePath)
+                ?: throw IllegalStateException("Failed to decode wallpaper: ${file.absolutePath}")
+            val fitted = centerCropToSize(original, destW, destH)
+            try {
+                Log.i(
+                    TAG,
+                    "FLAG_SYSTEM fitted ${original.width}x${original.height} -> ${fitted.width}x${fitted.height} (display ${destW}x${destH})",
+                )
+                wallpaperManager.setBitmap(
+                    fitted,
+                    Rect(0, 0, fitted.width, fitted.height),
+                    true,
+                    WallpaperManager.FLAG_SYSTEM,
+                )
+            } finally {
+                if (fitted !== original) {
+                    fitted.recycle()
+                }
+                original.recycle()
+            }
+        }
+
+        private fun displaySize(context: Context): Pair<Int, Int> {
+            val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val bounds = windowManager.maximumWindowMetrics.bounds
+                bounds.width() to bounds.height()
+            } else {
+                val metrics = android.util.DisplayMetrics()
+                @Suppress("DEPRECATION")
+                windowManager.defaultDisplay.getRealMetrics(metrics)
+                metrics.widthPixels to metrics.heightPixels
+            }
+        }
+
+        private fun centerCropToSize(source: Bitmap, destW: Int, destH: Int): Bitmap {
+            if (source.width == destW && source.height == destH) {
+                return source
+            }
+            val scale = maxOf(
+                destW.toFloat() / source.width,
+                destH.toFloat() / source.height,
+            )
+            val scaledW = (source.width * scale).roundToInt().coerceAtLeast(1)
+            val scaledH = (source.height * scale).roundToInt().coerceAtLeast(1)
+            val scaled = Bitmap.createScaledBitmap(source, scaledW, scaledH, true)
+            val x = ((scaled.width - destW) / 2).coerceAtLeast(0)
+            val y = ((scaled.height - destH) / 2).coerceAtLeast(0)
+            val w = destW.coerceAtMost(scaled.width - x)
+            val h = destH.coerceAtMost(scaled.height - y)
+            if (x == 0 && y == 0 && w == scaled.width && h == scaled.height) {
+                return scaled
+            }
+            val cropped = Bitmap.createBitmap(scaled, x, y, w, h)
+            if (scaled !== source) {
+                scaled.recycle()
+            }
+            return cropped
         }
 
         private fun applyStream(wallpaperManager: WallpaperManager, file: File, which: Int) {
