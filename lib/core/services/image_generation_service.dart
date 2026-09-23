@@ -1,9 +1,11 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:zane_bible_lockscreen/core/models/verse_text_position.dart';
 import 'package:zane_bible_lockscreen/core/utils/verse_text_parser.dart';
 import 'package:zane_bible_lockscreen/core/utils/verse_text_style.dart';
 
@@ -11,12 +13,9 @@ class ImageGenerationService {
   static const int wallpaperWidth = 1080;
   static const int wallpaperHeight = 1920;
 
-  /// Reference logical width used by the in-app preview (typical phone).
-  /// Font sizes are scaled from preview to wallpaper using this ratio.
-  static const double _previewLogicalWidth = 400;
-
   /// Scale factor so wallpaper text matches preview proportions.
-  static double get _fontScale => wallpaperWidth / _previewLogicalWidth;
+  static double get _fontScale =>
+      wallpaperWidth / VerseTextLayout.previewReferenceWidth;
 
   /// MAIN ENTRY POINT – canvas-based so it works identically in UI and background (WorkManager).
   /// Provide either [backgroundUrl] (Pexels) or [backgroundPath] (local file).
@@ -31,6 +30,7 @@ class ImageGenerationService {
     required Color textColor,
     required String fontFamily,
     String? photoAttribution,
+    VerseTextPosition position = VerseTextPosition.legacy,
   }) async {
     return _generateVerseImageCanvas(
       backgroundUrl: backgroundUrl,
@@ -42,6 +42,7 @@ class ImageGenerationService {
       textColor: textColor,
       fontFamily: fontFamily,
       photoAttribution: photoAttribution,
+      position: position,
     );
   }
 
@@ -57,6 +58,7 @@ class ImageGenerationService {
     required Color textColor,
     required String fontFamily,
     String? photoAttribution,
+    VerseTextPosition position = VerseTextPosition.legacy,
   }) async {
     final w = wallpaperWidth;
     final h = wallpaperHeight;
@@ -75,20 +77,20 @@ class ImageGenerationService {
           .timeout(const Duration(seconds: 20));
       if (resp.statusCode != 200 || resp.bodyBytes.isEmpty) {
         throw Exception(
-            'Failed to download background image: ${resp.statusCode}');
+          'Failed to download background image: ${resp.statusCode}',
+        );
       }
       bgBytes = resp.bodyBytes;
     } else {
-      throw Exception('Either backgroundUrl or backgroundPath must be provided');
+      throw Exception(
+        'Either backgroundUrl or backgroundPath must be provided',
+      );
     }
 
     // 2. Decode image – use targetHeight only to preserve aspect ratio.
     // Passing both targetWidth and targetHeight would stretch/distort images that
     // don't match the wallpaper ratio (e.g. landscape or square local photos).
-    final codec = await ui.instantiateImageCodec(
-      bgBytes,
-      targetHeight: h,
-    );
+    final codec = await ui.instantiateImageCodec(bgBytes, targetHeight: h);
     final frame = await codec.getNextFrame();
     final ui.Image bgImage = frame.image;
 
@@ -99,7 +101,8 @@ class ImageGenerationService {
     // 3. Draw background (cover) – scale uniformly to fill, crop excess, preserve proportions
     final srcW = bgImage.width.toDouble();
     final srcH = bgImage.height.toDouble();
-    final scale = (w / srcW).clamp(0.0, double.infinity) >
+    final scale =
+        (w / srcW).clamp(0.0, double.infinity) >
             (h / srcH).clamp(0.0, double.infinity)
         ? w / srcW
         : h / srcH;
@@ -126,8 +129,8 @@ class ImageGenerationService {
     final scaledVerseFontSize = fontSize * _fontScale;
     final scaledRefFontSize = (fontSize * 0.55) * _fontScale;
     // ~16% horizontal and ~12% vertical insets = content in center ~68% width, ~76% height
-    const horizontalPadding = 172.0; // 16% of 1080
-    const verticalPadding = 230.0;   // 12% of 1920
+    const horizontalPadding = VerseTextLayout.horizontalPadding;
+    const verticalPadding = VerseTextLayout.verticalPadding;
     final contentWidth = w - 2 * horizontalPadding;
     final maxVerseWidth = contentWidth;
 
@@ -185,35 +188,70 @@ class ImageGenerationService {
     refParagraphShadow.layout(ui.ParagraphConstraints(width: maxVerseWidth));
 
     final refBuilder = ui.ParagraphBuilder(refStyle)
-      ..pushStyle(ui.TextStyle(
-        color: ui.Color(
-          textColor.withValues(alpha: 0.9).toARGB32(),
+      ..pushStyle(
+        ui.TextStyle(
+          color: ui.Color(textColor.withValues(alpha: 0.9).toARGB32()),
         ),
-      ));
+      );
     refBuilder.addText(reference);
     final refParagraph = refBuilder.build();
     refParagraph.layout(ui.ParagraphConstraints(width: maxVerseWidth));
 
+    // A custom position uses the visible text width so the block can move
+    // toward the edges. A saved container width overrides that and wraps the
+    // verse inside the resized box. The default layout keeps the historical
+    // content column.
+    final inkWidth = math.max(
+      verseParagraph.longestLine,
+      refParagraph.longestLine,
+    );
+    final canvasSizeForWidth = ui.Size(w.toDouble(), h.toDouble());
+    final drawWidth = position.width != null
+        ? VerseTextLayout.containerWidth(canvasSizeForWidth, position.width!)
+        : position.isCustom
+        ? inkWidth.clamp(1.0, maxVerseWidth)
+        : maxVerseWidth;
+    if ((drawWidth - maxVerseWidth).abs() > 0.5) {
+      final constraints = ui.ParagraphConstraints(width: drawWidth);
+      verseParagraphShadow.layout(constraints);
+      verseParagraph.layout(constraints);
+      refParagraphShadow.layout(constraints);
+      refParagraph.layout(constraints);
+    }
+
     final gap = 24.0 * _fontScale;
     final totalContentHeight =
         verseParagraph.height + gap + refParagraph.height;
-    var contentTop = (h - totalContentHeight) / 2;
-    contentTop = contentTop.clamp(
-      verticalPadding,
-      h - verticalPadding - totalContentHeight,
-    );
+    final canvasSize = ui.Size(w.toDouble(), h.toDouble());
+    final blockRect = position.isCustom
+        ? VerseTextLayout.placeBlock(
+            canvas: canvasSize,
+            block: ui.Size(drawWidth, totalContentHeight),
+            anchor: ui.Offset(position.x, position.y),
+            margin: VerseTextLayout.edgeMargin,
+          )
+        : VerseTextLayout.legacyBlockRect(
+            canvas: canvasSize,
+            blockHeight: totalContentHeight,
+          );
 
-    final verseLeft = _paragraphX(verseParagraph, maxVerseWidth, textAlign);
-    final verseOffset = ui.Offset(horizontalPadding + verseLeft, contentTop);
-    canvas.drawParagraph(verseParagraphShadow, verseOffset + ui.Offset(shadowOffset, shadowOffset));
+    final verseLeft = _paragraphX(verseParagraph, drawWidth, textAlign);
+    final verseOffset = ui.Offset(blockRect.left + verseLeft, blockRect.top);
+    canvas.drawParagraph(
+      verseParagraphShadow,
+      verseOffset + ui.Offset(shadowOffset, shadowOffset),
+    );
     canvas.drawParagraph(verseParagraph, verseOffset);
 
-    final refLeft = _paragraphX(refParagraph, maxVerseWidth, textAlign);
+    final refLeft = _paragraphX(refParagraph, drawWidth, textAlign);
     final refOffset = ui.Offset(
-      horizontalPadding + refLeft,
-      contentTop + verseParagraph.height + gap,
+      blockRect.left + refLeft,
+      blockRect.top + verseParagraph.height + gap,
     );
-    canvas.drawParagraph(refParagraphShadow, refOffset + ui.Offset(shadowOffset, shadowOffset));
+    canvas.drawParagraph(
+      refParagraphShadow,
+      refOffset + ui.Offset(shadowOffset, shadowOffset),
+    );
     canvas.drawParagraph(refParagraph, refOffset);
 
     // 6b. Photo attribution at bottom (per API guidelines), subtle so it doesn’t ruin the design
@@ -242,10 +280,15 @@ class ImageGenerationService {
       attrParagraph.layout(ui.ParagraphConstraints(width: contentWidth));
 
       const attributionBottomPadding = 32.0;
-      final attrY = h - verticalPadding - attributionBottomPadding - attrParagraph.height;
-      final attrX = horizontalPadding + (contentWidth - attrParagraph.width) / 2;
+      final attrY =
+          h - verticalPadding - attributionBottomPadding - attrParagraph.height;
+      final attrX =
+          horizontalPadding + (contentWidth - attrParagraph.width) / 2;
       final attrOffset = ui.Offset(attrX, attrY);
-      canvas.drawParagraph(attrParagraphShadow, attrOffset + ui.Offset(attrShadowOffset, attrShadowOffset));
+      canvas.drawParagraph(
+        attrParagraphShadow,
+        attrOffset + ui.Offset(attrShadowOffset, attrShadowOffset),
+      );
       canvas.drawParagraph(attrParagraph, attrOffset);
     }
 

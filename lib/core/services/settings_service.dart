@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:zane_bible_lockscreen/core/models/background_source.dart';
 import 'package:zane_bible_lockscreen/core/utils/background_keywords.dart';
 import 'package:zane_bible_lockscreen/core/utils/bible_topics.dart';
+import 'package:zane_bible_lockscreen/core/models/verse_text_position.dart';
+import 'package:zane_bible_lockscreen/core/models/wallpaper_schedule.dart';
 import 'package:zane_bible_lockscreen/features/editor/verse_editor_state.dart';
 
 enum WallpaperTarget { lockScreenOnly, homeScreenOnly, both }
@@ -13,9 +15,14 @@ class SettingsService {
   static const _textAlignKey = 'editor_text_align';
   static const _textColorKey = 'editor_text_color';
   static const _fontFamilyKey = 'editor_font_family';
+  static const _versePositionXKey = 'verse_position_x';
+  static const _versePositionYKey = 'verse_position_y';
+  static const _versePositionWidthKey = 'verse_position_width';
   static const _isScheduledKey = 'daily_is_scheduled';
   static const _scheduledHourKey = 'daily_scheduled_hour';
   static const _scheduledMinuteKey = 'daily_scheduled_minute';
+  static const _scheduledDaysKey = 'daily_scheduled_days';
+  static const _nextTargetKey = 'daily_next_target_millis';
   static const _wallpaperTargetKey = 'wallpaper_target';
   static const _verseTopicKey = 'verse_topic';
   static const _backgroundKeywordKey = 'background_keyword';
@@ -101,6 +108,7 @@ class SettingsService {
       textAlign: align,
       textColor: Color(textColorValue),
       fontFamily: fontFamily,
+      position: _readVersePosition(p),
     );
   }
 
@@ -115,8 +123,55 @@ class SettingsService {
     await p.setString(_textAlignKey, alignStr);
     await p.setInt(_textColorKey, state.textColor.toARGB32());
 
-    // Save the actual font family name
+    // Save the actual font family name.
+    // Position is stored separately so alignment and font edits do not
+    // create a custom verse position.
     await p.setString(_fontFamilyKey, state.fontFamily);
+  }
+
+  static Future<VerseTextPosition> loadVersePosition() async {
+    final p = await _prefs();
+    return _readVersePosition(p);
+  }
+
+  /// Saves a user-chosen block center and optional container width.
+  /// [x], [y], and [width] are fractions of the wallpaper, not pixels.
+  static Future<void> saveVersePosition(VerseTextPosition position) async {
+    final p = await _prefs();
+    await p.setDouble(_versePositionXKey, _unit(position.x));
+    await p.setDouble(_versePositionYKey, _unit(position.y));
+    final width = position.width;
+    if (width == null) {
+      await p.remove(_versePositionWidthKey);
+    } else {
+      await p.setDouble(_versePositionWidthKey, _unit(width));
+    }
+  }
+
+  /// Restores the historical centered verse layout.
+  static Future<void> clearVersePosition() async {
+    final p = await _prefs();
+    await p.remove(_versePositionXKey);
+    await p.remove(_versePositionYKey);
+    await p.remove(_versePositionWidthKey);
+  }
+
+  static VerseTextPosition _readVersePosition(SharedPreferences p) {
+    if (!p.containsKey(_versePositionXKey) ||
+        !p.containsKey(_versePositionYKey)) {
+      return VerseTextPosition.legacy;
+    }
+    final storedWidth = p.getDouble(_versePositionWidthKey);
+    return VerseTextPosition(
+      x: _unit(p.getDouble(_versePositionXKey) ?? 0.5),
+      y: _unit(p.getDouble(_versePositionYKey) ?? 0.5),
+      width: storedWidth == null ? null : _unit(storedWidth),
+    );
+  }
+
+  static double _unit(double value) {
+    if (value.isNaN || value.isInfinite) return 0.5;
+    return value.clamp(0.0, 1.0).toDouble();
   }
 
   static Future<void> setScheduled(bool value) async {
@@ -158,5 +213,69 @@ class SettingsService {
   static Future<void> setWallpaperTarget(WallpaperTarget target) async {
     final p = await _prefs();
     await p.setString(_wallpaperTargetKey, target.toString().split('.').last);
+  }
+
+  /// Persists the weekly wallpaper schedule. This is the source of truth.
+  static Future<void> saveWallpaperSchedule(WallpaperSchedule schedule) async {
+    final p = await _prefs();
+    await p.setBool(_isScheduledKey, schedule.enabled);
+    await p.setInt(_scheduledHourKey, schedule.hour);
+    await p.setInt(_scheduledMinuteKey, schedule.minute);
+    final days =
+        schedule.daysOfWeek.where(WallpaperSchedule.everyDay.contains).toList()
+          ..sort();
+    await p.setStringList(
+      _scheduledDaysKey,
+      days.map((day) => '$day').toList(growable: false),
+    );
+  }
+
+  /// Loads the schedule. Missing weekdays mean every day, which preserves
+  /// schedules saved before weekly selection existed.
+  static Future<WallpaperSchedule> loadWallpaperSchedule() async {
+    final p = await _prefs();
+    final hour = p.getInt(_scheduledHourKey) ?? WallpaperSchedule.defaultHour;
+    final minute =
+        p.getInt(_scheduledMinuteKey) ?? WallpaperSchedule.defaultMinute;
+    return WallpaperSchedule(
+      enabled: p.getBool(_isScheduledKey) ?? false,
+      hour: _inRange(hour, 0, 23, WallpaperSchedule.defaultHour),
+      minute: _inRange(minute, 0, 59, WallpaperSchedule.defaultMinute),
+      daysOfWeek: _readScheduledDays(p),
+    );
+  }
+
+  static Future<void> setNextScheduledTarget(DateTime? target) async {
+    final p = await _prefs();
+    if (target == null) {
+      await p.remove(_nextTargetKey);
+      return;
+    }
+    await p.setInt(_nextTargetKey, target.millisecondsSinceEpoch);
+  }
+
+  static Future<DateTime?> getNextScheduledTarget() async {
+    final p = await _prefs();
+    final millis = p.getInt(_nextTargetKey);
+    if (millis == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(millis);
+  }
+
+  static Set<int> _readScheduledDays(SharedPreferences p) {
+    if (!p.containsKey(_scheduledDaysKey)) {
+      return Set<int>.of(WallpaperSchedule.everyDay);
+    }
+    final stored = p.getStringList(_scheduledDaysKey);
+    if (stored == null) return Set<int>.of(WallpaperSchedule.everyDay);
+    return stored
+        .map(int.tryParse)
+        .whereType<int>()
+        .where(WallpaperSchedule.everyDay.contains)
+        .toSet();
+  }
+
+  static int _inRange(int value, int min, int max, int fallback) {
+    if (value < min || value > max) return fallback;
+    return value;
   }
 }

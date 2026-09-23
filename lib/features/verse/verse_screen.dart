@@ -7,6 +7,8 @@ import 'package:zane_bible_lockscreen/core/services/background_provider.dart';
 import 'package:zane_bible_lockscreen/core/services/image_generation_service.dart';
 import 'package:zane_bible_lockscreen/core/services/settings_service.dart';
 import 'package:zane_bible_lockscreen/core/services/verse_repository.dart';
+import 'package:zane_bible_lockscreen/core/models/verse_text_position.dart';
+import 'package:zane_bible_lockscreen/core/models/wallpaper_schedule.dart';
 import 'package:zane_bible_lockscreen/core/services/wallpaper_service.dart';
 import 'package:zane_bible_lockscreen/core/services/workmanager_service.dart';
 import 'package:zane_bible_lockscreen/features/editor/verse_editor_controls.dart';
@@ -28,8 +30,7 @@ class _VerseScreenState extends State<VerseScreen> {
   bool loading = true;
   final editor = VerseEditorState();
   bool useForDaily = false;
-  bool isScheduled = false;
-  TimeOfDay? scheduledTime;
+  WallpaperSchedule wallpaperSchedule = WallpaperSchedule.initial;
 
   @override
   void initState() {
@@ -42,29 +43,95 @@ class _VerseScreenState extends State<VerseScreen> {
     try {
       final saved = await SettingsService.loadEditorState();
       final use = await SettingsService.getUseEditorForDaily();
-      final sched = await SettingsService.getScheduled();
-      final schedTime = await SettingsService.getScheduledTime();
+      final schedule = await SettingsService.loadWallpaperSchedule();
 
       setState(() {
         editor.fontSize = saved.fontSize;
         editor.textAlign = saved.textAlign;
         editor.textColor = saved.textColor;
         editor.fontFamily = saved.fontFamily; // ← actual font from pubspec.yaml
+        editor.position = saved.position;
         useForDaily = use;
-        isScheduled = sched;
-        scheduledTime = schedTime;
+        wallpaperSchedule = schedule;
       });
     } catch (e) {
-      developer.log('Failed to load editor settings, using defaults: $e', name: 'VerseScreen');
+      developer.log(
+        'Failed to load editor settings, using defaults: $e',
+        name: 'VerseScreen',
+      );
       setState(() {
         editor.fontSize = 42;
         editor.textAlign = TextAlign.center;
         editor.textColor = Colors.white;
         editor.fontFamily = 'Roboto'; // fallback
+        editor.position = VerseTextPosition.legacy;
         useForDaily = false;
-        isScheduled = false;
-        scheduledTime = null;
+        wallpaperSchedule = WallpaperSchedule.initial;
       });
+    }
+  }
+
+  Future<void> _onVersePositionCommitted(VerseTextPosition next) async {
+    setState(() => editor.position = next);
+    if (next.isCustom) {
+      await SettingsService.saveVersePosition(next);
+      return;
+    }
+    await SettingsService.clearVersePosition();
+  }
+
+  Future<void> _onScheduleChanged(WallpaperSchedule next) async {
+    final error = next.validationError;
+    if (error != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+
+    final previous = wallpaperSchedule;
+    final timeChanged =
+        previous.hour != next.hour || previous.minute != next.minute;
+    final turningOff = previous.enabled && !next.enabled;
+    try {
+      await SettingsService.saveWallpaperSchedule(next);
+      String? message;
+      if (next.enabled) {
+        message = await WorkManagerService.enqueueConfigured(
+          allowSameMinuteGrace: timeChanged,
+        );
+      } else {
+        await WorkManagerService.cancelDailyVerse();
+      }
+      if (!mounted) return;
+      setState(() => wallpaperSchedule = next);
+      if (turningOff) {
+        message = 'Schedule is off. No wallpaper update is queued.';
+      }
+      if (message != null && (next.enabled || turningOff)) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (e, stackTrace) {
+      developer.log(
+        'Schedule update failed: $e',
+        name: 'VerseScreen',
+        stackTrace: stackTrace,
+      );
+      try {
+        await SettingsService.saveWallpaperSchedule(previous);
+      } catch (rollbackError) {
+        developer.log(
+          'Schedule rollback failed: $rollbackError',
+          name: 'VerseScreen',
+        );
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update the schedule.')),
+      );
     }
   }
 
@@ -77,7 +144,9 @@ class _VerseScreenState extends State<VerseScreen> {
 
     try {
       final verseResult = await verseRepo.fetchRandomVerse(topicId: topic);
-      final bgResult = await BackgroundProvider.fetchBackground(keywordId: keyword);
+      final bgResult = await BackgroundProvider.fetchBackground(
+        keywordId: keyword,
+      );
 
       if (!mounted) return;
       setState(() {
@@ -99,9 +168,9 @@ class _VerseScreenState extends State<VerseScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load: $e')));
       }
     }
   }
@@ -128,21 +197,19 @@ class _VerseScreenState extends State<VerseScreen> {
         textColor: editor.textColor,
         fontFamily: editor.fontFamily,
         photoAttribution: photoAttribution,
+        position: editor.position,
       );
 
       final name = 'verse_${DateTime.now().millisecondsSinceEpoch}';
-      final result = await GalleryService.saveImage(
-        image,
-        name: name,
-      );
+      final result = await GalleryService.saveImage(image, name: name);
 
       if (!mounted) return;
 
       final isSuccess = result['isSuccess'] == true;
       if (isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Image saved to gallery')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Image saved to gallery')));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -182,6 +249,7 @@ class _VerseScreenState extends State<VerseScreen> {
         textColor: editor.textColor,
         fontFamily: editor.fontFamily,
         photoAttribution: photoAttribution,
+        position: editor.position,
       );
 
       final file = await ImageGenerationService.saveImage(
@@ -230,6 +298,7 @@ class _VerseScreenState extends State<VerseScreen> {
                   textAlign: editor.textAlign,
                   textColor: editor.textColor,
                   fontFamily: editor.fontFamily,
+                  position: editor.position,
                 ),
 
                 Positioned(
@@ -294,37 +363,17 @@ class _VerseScreenState extends State<VerseScreen> {
                     onCapturePressed: generateImage,
                     onSetLockPressed: () async =>
                         await generateAndSetWallpaper(),
-                    onScheduleAt: (time) async {
-                      // schedule with WorkManager for chosen time
-                      final nextRunText =
-                          await WorkManagerService.scheduleDailyVerseAt(
-                        time.hour,
-                        time.minute,
-                      );
-                      await SettingsService.setScheduled(true);
-                      await SettingsService.setScheduledTime(
-                        time.hour,
-                        time.minute,
-                      );
-                      setState(() {
-                        isScheduled = true;
-                        scheduledTime = time;
-                      });
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(nextRunText)),
-                      );
+                    verse: verse!.text,
+                    reference: verse!.reference,
+                    backgroundUrl: backgroundUrl,
+                    backgroundPath: backgroundPath,
+                    versePosition: editor.position,
+                    onVersePositionChanged: (next) {
+                      setState(() => editor.position = next);
                     },
-                    onCancelSchedule: () async {
-                      await WorkManagerService.cancelDailyVerse();
-                      await SettingsService.setScheduled(false);
-                      setState(() {
-                        isScheduled = false;
-                        scheduledTime = null;
-                      });
-                    },
-                    isScheduled: isScheduled,
-                    scheduledTime: scheduledTime,
+                    onVersePositionCommitted: _onVersePositionCommitted,
+                    wallpaperSchedule: wallpaperSchedule,
+                    onScheduleChanged: _onScheduleChanged,
                   ),
                 ),
               ],

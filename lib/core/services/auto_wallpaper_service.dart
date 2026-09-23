@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
+import 'package:zane_bible_lockscreen/core/models/verse_text_position.dart';
 import 'package:zane_bible_lockscreen/core/services/wallpaper_service.dart';
 import 'package:zane_bible_lockscreen/core/models/bible_verse.dart';
 import 'package:zane_bible_lockscreen/core/services/background_provider.dart';
@@ -10,17 +11,23 @@ import 'package:zane_bible_lockscreen/core/services/verse_repository.dart';
 
 class AutoWallpaperService {
   static Future<void> run() async {
-    developer.log('Starting wallpaper generation', name: 'AutoWallpaperService');
+    developer.log(
+      'Starting wallpaper generation',
+      name: 'AutoWallpaperService',
+    );
 
     try {
       // ✅ 1. Fetch random verse (uses API when online, offline store when not)
       final topic = await SettingsService.getVerseTopic();
-      final BibleVerse verse =
-          await VerseRepository().fetchRandomVerse(topicId: topic);
+      final BibleVerse verse = await VerseRepository().fetchRandomVerse(
+        topicId: topic,
+      );
 
       // ✅ 2. Fetch background (Pexels when online, or local gallery for offline)
       final keyword = await SettingsService.getBackgroundKeyword();
-      final bgResult = await BackgroundProvider.fetchBackground(keywordId: keyword);
+      final bgResult = await BackgroundProvider.fetchBackground(
+        keywordId: keyword,
+      );
 
       if (bgResult == null) {
         throw Exception(
@@ -33,6 +40,7 @@ class AutoWallpaperService {
       TextAlign textAlign = TextAlign.center;
       Color textColor = Colors.white;
       String fontFamily = 'Roboto';
+      var position = VerseTextPosition.legacy;
 
       try {
         final editor = await SettingsService.loadEditorState();
@@ -40,6 +48,7 @@ class AutoWallpaperService {
         textAlign = editor.textAlign;
         textColor = editor.textColor;
         fontFamily = editor.fontFamily;
+        position = editor.position;
         developer.log('Editor settings applied', name: 'AutoWallpaperService');
       } catch (e) {
         developer.log(
@@ -60,7 +69,10 @@ class AutoWallpaperService {
           developer.log('Editor settings loaded', name: 'AutoWallpaperService');
         }
       } catch (e) {
-        developer.log('Editor settings failed, using defaults', name: 'AutoWallpaperService');
+        developer.log(
+          'Editor settings failed, using defaults',
+          name: 'AutoWallpaperService',
+        );
       }
 
       // 6️⃣ Generate image using centralized service (with photo attribution when applicable)
@@ -74,9 +86,13 @@ class AutoWallpaperService {
         textColor: textColor,
         fontFamily: fontFamily,
         photoAttribution: bgResult.attributionText,
+        position: position,
       );
 
-      developer.log('Image generated (${image.length} bytes)', name: 'AutoWallpaperService');
+      developer.log(
+        'Image generated (${image.length} bytes)',
+        name: 'AutoWallpaperService',
+      );
 
       // ✅ 7. Save file
       final file = await ImageGenerationService.saveImage(
@@ -84,7 +100,10 @@ class AutoWallpaperService {
         'daily_verse.png',
       );
 
-      developer.log('Image saved at ${file.path}', name: 'AutoWallpaperService');
+      developer.log(
+        'Image saved at ${file.path}',
+        name: 'AutoWallpaperService',
+      );
 
       // ✅ 8. Determine wallpaper target
       String locationStr = 'both';
@@ -121,7 +140,11 @@ class AutoWallpaperService {
         rethrow;
       }
     } catch (e, stackTrace) {
-      developer.log('ERROR: $e', name: 'AutoWallpaperService', stackTrace: stackTrace);
+      developer.log(
+        'ERROR: $e',
+        name: 'AutoWallpaperService',
+        stackTrace: stackTrace,
+      );
       rethrow;
     }
   }

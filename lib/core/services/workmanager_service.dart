@@ -1,129 +1,189 @@
 import 'dart:developer' as developer;
 
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
-import 'package:zane_bible_lockscreen/background/verse_worker.dart';
+import 'package:zane_bible_lockscreen/background/daily_verse_work.dart';
+import 'package:zane_bible_lockscreen/core/models/wallpaper_schedule.dart';
+import 'package:zane_bible_lockscreen/core/services/settings_service.dart';
 
+/// Schedules wallpaper updates with one inexact WorkManager job.
+///
+/// The saved schedule is one time of day plus the selected weekdays. A periodic
+/// worker cannot express that: WorkManager periods are interval-based, at least
+/// 15 minutes, and are not tied to a weekday clock time. This service instead
+/// enqueues the next occurrence only. After the worker runs, it enqueues the
+/// following selected weekday. [ExistingWorkPolicy.replace] on
+/// [dailyVerseUniqueName] keeps a single job.
+///
+/// Timing is not exact. Android may defer the job.
 class WorkManagerService {
-  static const _scheduledHourKey = 'daily_scheduled_hour';
-  static const _scheduledMinuteKey = 'daily_scheduled_minute';
-
   static Future<void> scheduleDailyVerse() async {
-    // Default schedule at 5:00 AM
-    await scheduleDailyVerseAt(5, 0);
+    await SettingsService.saveWallpaperSchedule(
+      WallpaperSchedule.initial.copyWith(enabled: true),
+    );
+    await enqueueConfigured(allowSameMinuteGrace: false);
   }
 
   static Future<void> cancelDailyVerse() async {
     developer.log('Cancelling daily verse task', name: 'WorkManagerService');
     await Workmanager().cancelByUniqueName(dailyVerseUniqueName);
     await resetDailyWallpaperRetryCount();
+    await SettingsService.setNextScheduledTarget(null);
     developer.log('Daily verse task cancelled', name: 'WorkManagerService');
   }
 
-  static Future<String> scheduleDailyVerseAt(int hour, int minute) async {
-      developer.log(
-        'Scheduling daily verse at $hour:${minute.toString().padLeft(2, '0')}',
-        name: 'DailyFaithSchedule',
-      );
-
-    final initial = _initialDelayFor(hour, minute);
-    final nextRunText = _describeDelay(initial, hour, minute);
-    developer.log(
-      'Initial delay: ${initial.inSeconds} seconds (${(initial.inHours + (initial.inMinutes % 60) / 60).toStringAsFixed(1)} hours)',
-      name: 'WorkManagerService',
-    );
-
-    try {
-      // Save the scheduled time to SharedPreferences for later use
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_scheduledHourKey, hour);
-      await prefs.setInt(_scheduledMinuteKey, minute);
-      await resetDailyWallpaperRetryCount();
-      developer.log('Saved scheduled time to SharedPreferences', name: 'WorkManagerService');
-
-      // Cancel existing task before registering new one
-      await Workmanager().cancelByUniqueName(dailyVerseUniqueName);
-
-      developer.log(
-        'Registering one-off task with delay ${initial.inSeconds}s',
-        name: 'WorkManagerService',
-      );
-
-      // One-off WorkManager job aimed at the user-selected target time.
-      // Execution is inexact: Android may delay it (Doze, standby, OEM power management).
-      await Workmanager().registerOneOffTask(
-        dailyVerseUniqueName,
-        dailyVerseTask,
-        initialDelay: initial,
-        constraints: Constraints(
-          networkType: NetworkType.notRequired,
-          requiresBatteryNotLow: false,
-          requiresDeviceIdle: false,
-          requiresStorageNotLow: false,
-        ),
-        backoffPolicy: BackoffPolicy.exponential,
-        backoffPolicyDelay: const Duration(minutes: 15),
-        existingWorkPolicy: ExistingWorkPolicy.replace,
-      );
-
-      developer.log('Successfully registered daily verse task', name: 'DailyFaithSchedule');
-      developer.log(
-        'Scheduled for $hour:${minute.toString().padLeft(2, '0')} daily',
-        name: 'WorkManagerService',
-      );
-      return nextRunText;
-    } catch (e, stackTrace) {
-      developer.log('Error registering task: $e', name: 'WorkManagerService', stackTrace: stackTrace);
-      rethrow;
-    }
-  }
-
-  /// Delay until the next run at [hour]:[minute].
+  /// Enqueues the next run from the persisted schedule.
   ///
-  /// [DateTime] constructed from a [TimeOfDay] is at second 0 of that minute.
-  /// Confirming the picker on the current minute therefore looks "in the past"
-  /// and used to jump to tomorrow (~24h). A short grace window runs soon instead.
-  static Duration _initialDelayFor(int hour, int minute) {
+  /// [allowSameMinuteGrace] is only for a user confirming the current minute
+  /// in the time picker. Restores and post-run scheduling leave it false so a
+  /// finished run cannot immediately schedule itself again.
+  static Future<String> enqueueConfigured({
+    required bool allowSameMinuteGrace,
+    bool cancelExisting = true,
+  }) async {
+    final schedule = await SettingsService.loadWallpaperSchedule();
+    final error = schedule.validationError;
+    if (!schedule.enabled || error != null) {
+      throw StateError(error ?? 'Schedule is off');
+    }
+
     final now = DateTime.now();
-    var nextRun = DateTime(now.year, now.month, now.day, hour, minute);
-
-    if (nextRun.isAfter(now)) {
-      developer.log(
-        'Scheduling for today at $hour:${minute.toString().padLeft(2, '0')}',
-        name: 'DailyFaithSchedule',
-      );
-      return nextRun.difference(now);
+    final target = ScheduleCalculator.nextOccurrence(
+      now: now,
+      hour: schedule.hour,
+      minute: schedule.minute,
+      daysOfWeek: schedule.daysOfWeek,
+      allowSameMinuteGrace: allowSameMinuteGrace,
+    );
+    if (target == null) {
+      throw StateError('Select at least one day.');
     }
 
-    final overdue = now.difference(nextRun);
-    if (overdue < const Duration(minutes: 3)) {
-      const soon = Duration(seconds: 20);
-      developer.log(
-        'Selected time is the current or just-passed minute; first run in ${soon.inSeconds}s (not tomorrow)',
-        name: 'DailyFaithSchedule',
-      );
-      return soon;
+    if (cancelExisting) {
+      await cancelDailyVerse();
     }
 
-    nextRun = nextRun.add(const Duration(days: 1));
+    final delay = target.difference(now);
     developer.log(
-      'Scheduled time already passed today, scheduling for tomorrow at $hour:${minute.toString().padLeft(2, '0')}',
+      'Registering wallpaper work in ${delay.inSeconds}s for '
+      '${target.weekday} ${target.hour}:${target.minute.toString().padLeft(2, '0')}',
       name: 'DailyFaithSchedule',
     );
-    return nextRun.difference(now);
+    await registerDailyVerseWork(
+      delay: delay,
+      target: target,
+      rememberTarget: true,
+    );
+    return ScheduleCalculator.describeUpcoming(now, target);
   }
 
-  static String describeNextRun(int hour, int minute) {
-    return _describeDelay(_initialDelayFor(hour, minute), hour, minute);
+  /// After a successful run, queue the following selected weekday.
+  static Future<void> rescheduleFromPersistedConfig() async {
+    try {
+      final schedule = await SettingsService.loadWallpaperSchedule();
+      if (!schedule.enabled || schedule.validationError != null) {
+        developer.log(
+          'Schedule is off; not queueing another wallpaper update',
+          name: 'BackgroundWorker',
+        );
+        await SettingsService.setNextScheduledTarget(null);
+        return;
+      }
+      await enqueueConfigured(
+        allowSameMinuteGrace: false,
+        cancelExisting: false,
+      );
+      developer.log(
+        'Queued the next selected weekday',
+        name: 'BackgroundWorker',
+      );
+    } catch (e, stackTrace) {
+      developer.log(
+        'Error rescheduling: $e',
+        name: 'BackgroundWorker',
+        stackTrace: stackTrace,
+      );
+    }
   }
 
-  static String _describeDelay(Duration delay, int hour, int minute) {
-    if (delay.inHours >= 12) {
-      return 'Next run tomorrow around ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}. Android may delay it.';
+  /// Keeps a failed run on a short retry without moving the saved weekday target.
+  static Future<void> enqueueRetry(Duration delay) async {
+    final target = DateTime.now().add(delay);
+    developer.log(
+      'Scheduling wallpaper retry in ${delay.inMinutes} minutes',
+      name: 'BackgroundWorker',
+    );
+    await registerDailyVerseWork(
+      delay: delay,
+      target: target,
+      rememberTarget: false,
+    );
+  }
+
+  /// Reloads the saved schedule and aligns the single WorkManager job with it.
+  ///
+  /// Force-stop clears WorkManager jobs until the app is opened again. This
+  /// registers a replacement only when the saved schedule is enabled and no
+  /// matching job is already pending. It does not bypass force-stop.
+  static Future<void> reconcilePersistedSchedule() async {
+    try {
+      final schedule = await SettingsService.loadWallpaperSchedule();
+      final now = DateTime.now();
+      final computed = ScheduleCalculator.nextOccurrence(
+        now: now,
+        hour: schedule.hour,
+        minute: schedule.minute,
+        daysOfWeek: schedule.daysOfWeek,
+      );
+      WorkInfo? info;
+      try {
+        info = await Workmanager().getWorkInfo(dailyVerseUniqueName);
+      } catch (e) {
+        developer.log(
+          'Work status unavailable: $e',
+          name: 'DailyFaithSchedule',
+        );
+      }
+      final stored = await SettingsService.getNextScheduledTarget();
+      final action = ScheduleReconciler.decide(
+        enabled: schedule.enabled,
+        hasSelectedDays:
+            schedule.daysOfWeek.isNotEmpty && schedule.validationError == null,
+        workRunning: info?.state == WorkState.running,
+        workPending: info?.state == WorkState.scheduled,
+        storedTarget: stored,
+        computedTarget: computed,
+        now: now,
+      );
+
+      switch (action) {
+        case ScheduleWorkAction.keepExisting:
+          developer.log(
+            'Pending wallpaper work already matches the saved schedule',
+            name: 'DailyFaithSchedule',
+          );
+          return;
+        case ScheduleWorkAction.cancel:
+          final active =
+              info?.state == WorkState.scheduled ||
+              info?.state == WorkState.running;
+          if (active || stored != null) {
+            await cancelDailyVerse();
+          }
+          return;
+        case ScheduleWorkAction.replace:
+          developer.log(
+            'Registering wallpaper work from the saved schedule',
+            name: 'DailyFaithSchedule',
+          );
+          await enqueueConfigured(allowSameMinuteGrace: false);
+          return;
+      }
+    } catch (e, stackTrace) {
+      developer.log(
+        'Error restoring schedule: $e',
+        name: 'DailyFaithSchedule',
+        stackTrace: stackTrace,
+      );
     }
-    if (delay.inMinutes < 1) {
-      return 'Next run in about a minute. Android may delay it slightly.';
-    }
-    return 'Next run in about ${delay.inMinutes} minutes. Android may delay it.';
   }
 }
