@@ -1029,13 +1029,20 @@ class BibleMetadata {
 
   static String randomPassage() {
     final book = books.keys.elementAt(_random.nextInt(books.length));
+    return randomPassageFrom(book);
+  }
 
-    final chapters = books[book]!;
+  /// A random single-verse reference from [book]. Unknown books fall back to
+  /// any book.
+  static String randomPassageFrom(String book) {
+    final chapters = books[book];
+    if (chapters == null || chapters.isEmpty) return randomPassage();
+
     final chapterIndex = _random.nextInt(chapters.length);
     final verseCount = chapters[chapterIndex];
+    if (verseCount < 1) return randomPassage();
 
     final verse = _random.nextInt(verseCount) + 1;
-
     return '$book ${chapterIndex + 1}:$verse';
   }
 }

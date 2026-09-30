@@ -2,7 +2,8 @@ import 'dart:math';
 import 'bible_metadata.dart';
 
 /// Topic/keyword filter for verse selection. Default "all" = all 66 books.
-/// Other topics use curated passage lists (single-verse references for API compatibility).
+/// Theme topics use curated passage lists. Book keywords pick any verse from
+/// that book (Corinthians includes both letters).
 class BibleTopics {
   static const String all = 'all';
 
@@ -17,6 +18,26 @@ class BibleTopics {
     'wisdom',
     'grace',
     'joy',
+    'psalms',
+    'proverbs',
+    'ecclesiastes',
+    'song of solomon',
+    'job',
+    'matthew',
+    'mark',
+    'luke',
+    'john',
+    'acts',
+    'romans',
+    'corinthians',
+    'galatians',
+    'ephesians',
+    'philippians',
+    'isaiah',
+    'jeremiah',
+    'ezekiel',
+    'daniel',
+    'revelation',
   ];
 
   /// Display label for each topic (for settings UI).
@@ -42,9 +63,86 @@ class BibleTopics {
         return 'Grace';
       case 'joy':
         return 'Joy';
+      case 'psalms':
+        return 'Psalms';
+      case 'proverbs':
+        return 'Proverbs';
+      case 'ecclesiastes':
+        return 'Ecclesiastes';
+      case 'song of solomon':
+        return 'Song of Solomon';
+      case 'job':
+        return 'Job';
+      case 'matthew':
+        return 'Matthew';
+      case 'mark':
+        return 'Mark';
+      case 'luke':
+        return 'Luke';
+      case 'john':
+        return 'John';
+      case 'acts':
+        return 'Acts';
+      case 'romans':
+        return 'Romans';
+      case 'corinthians':
+        return 'Corinthians';
+      case 'galatians':
+        return 'Galatians';
+      case 'ephesians':
+        return 'Ephesians';
+      case 'philippians':
+        return 'Philippians';
+      case 'isaiah':
+        return 'Isaiah';
+      case 'jeremiah':
+        return 'Jeremiah';
+      case 'ezekiel':
+        return 'Ezekiel';
+      case 'daniel':
+        return 'Daniel';
+      case 'revelation':
+        return 'Revelation';
       default:
         return topicId;
     }
+  }
+
+  /// Books a keyword draws from. Corinthians includes both letters.
+  static const Map<String, List<String>> booksByTopic = {
+    'psalms': ['Psalms'],
+    'proverbs': ['Proverbs'],
+    'ecclesiastes': ['Ecclesiastes'],
+    'song of solomon': ['Song of Solomon'],
+    'job': ['Job'],
+    'matthew': ['Matthew'],
+    'mark': ['Mark'],
+    'luke': ['Luke'],
+    'john': ['John'],
+    'acts': ['Acts'],
+    'romans': ['Romans'],
+    'corinthians': ['1 Corinthians', '2 Corinthians'],
+    'galatians': ['Galatians'],
+    'ephesians': ['Ephesians'],
+    'philippians': ['Philippians'],
+    'isaiah': ['Isaiah'],
+    'jeremiah': ['Jeremiah'],
+    'ezekiel': ['Ezekiel'],
+    'daniel': ['Daniel'],
+    'revelation': ['Revelation'],
+  };
+
+  /// True when [reference] is a verse from one of [topicId]'s books.
+  static bool referenceMatchesTopic(String reference, String topicId) {
+    final books = booksByTopic[topicId];
+    if (books == null) return false;
+    for (final book in books) {
+      final names = book == 'Psalms' ? const ['Psalm', 'Psalms'] : [book];
+      for (final name in names) {
+        if (reference.startsWith('$name ')) return true;
+      }
+    }
+    return false;
   }
 
   /// Curated passages per topic (single verse refs for labs.bible.org API).
@@ -162,11 +260,16 @@ class BibleTopics {
   static final Random _random = Random();
 
   /// Returns a random passage reference. If [topicId] is null, "all", or unknown,
-  /// uses all 66 books via BibleMetadata.randomPassage(). Otherwise picks from
-  /// the topic's curated list.
+  /// uses all 66 books via BibleMetadata.randomPassage(). A book keyword picks
+  /// any verse from that book. Other topics use a curated list.
   static String getRandomPassageForTopic(String? topicId) {
     if (topicId == null || topicId.isEmpty || topicId == all) {
       return BibleMetadata.randomPassage();
+    }
+    final books = booksByTopic[topicId];
+    if (books != null && books.isNotEmpty) {
+      final book = books[_random.nextInt(books.length)];
+      return BibleMetadata.randomPassageFrom(book);
     }
     final list = _passagesByTopic[topicId];
     if (list == null || list.isEmpty) {

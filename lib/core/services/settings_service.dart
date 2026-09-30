@@ -30,7 +30,7 @@ class SettingsService {
 
   static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
-  /// Background image keyword filter (e.g. "all", "nature", "christian"). Default "all".
+  /// Background image keyword filter. Default "all", which varies the Pexels query.
   static Future<String> getBackgroundKeyword() async {
     final p = await _prefs();
     return p.getString(_backgroundKeywordKey) ?? BackgroundKeywords.all;

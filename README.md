@@ -6,11 +6,11 @@ DailyFaith turns your lock screen and home screen into a daily dose of Scripture
 
 ### Verse Wallpapers
 - **Daily verse wallpapers** — Random verse over a high-quality background, with readable text and dark overlay for contrast.
-- **Verse by topic** — Filter verses by keyword: All (66 books), Love, Strength, Hope, Peace, Faith, Comfort, Wisdom, Grace, or Joy.
+- **Verse by topic** — Filter verses by keyword: All (66 books), Love, Strength, Hope, Peace, Faith, Comfort, Wisdom, Grace, Joy, Psalms, Proverbs, Ecclesiastes, Song of Solomon, Job, Matthew, Mark, Luke, John, Acts, Romans, Corinthians, Galatians, Ephesians, Philippians, Isaiah, Jeremiah, Ezekiel, Daniel, or Revelation. A book keyword uses a random verse from that book. Corinthians includes both letters.
 - **Offline verses** — 100+ verses are stored locally so the app can show random verses even without an internet connection.
 
 ### Background Images
-- **Pexels (online)** — High-quality images from Pexels API. Filter by keyword: All, Nature, Christian, Animals, Wildlife, Outer Space, Landscape, Sky, Ocean, Mountains, or Flowers.
+- **Pexels (online)** — High-quality images from Pexels API. Filter by keyword: All (varied), Jesus & Saints, Abstract Background, Textured Wallpaper, Neutral Flatlay, Minimalist Texture, Beige Watercolor, Fine Linen, Calm Sea Morning, Misty Forest Dawn, Soft Sun Rays, Foggy Mountain Sunrise, Dark Rocky Cliff, Moody Mountain Peak, Deep Ocean Wave, Desert Canyon, Wildflower Macro, Eucalyptus Leaves, Sun Flare Trees, Bokeh Light Background, Animals, Wildlife, or Outer Space.
 - **Device gallery (offline)** — Select multiple images from your gallery. The app picks one randomly for each background. Works fully offline.
 - **Background source** — Choose Pexels or your gallery in Wallpaper Settings. When offline, Pexels automatically falls back to local gallery if available.
 - **Pexels attribution** — Photographer credit shown at the bottom when using Pexels images.

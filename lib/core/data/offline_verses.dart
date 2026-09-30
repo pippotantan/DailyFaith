@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:zane_bible_lockscreen/core/utils/bible_topics.dart';
+
 /// Pre-loaded Bible verses for offline use.
 /// Verse text from labs.bible.org (NET Bible).
 /// Provides sufficient variety for offline verse display.
@@ -215,6 +217,20 @@ class OfflineVerses {
   /// Returns a random verse for the given topic, or null if topic has no verses.
   static Map<String, String>? getRandomVerse(String? topicId) {
     final key = (topicId == null || topicId.isEmpty) ? 'all' : topicId;
+    if (BibleTopics.booksByTopic.containsKey(key)) {
+      final matches = <Map<String, String>>[];
+      for (final list in _versesByTopic.values) {
+        for (final verse in list) {
+          final reference = verse['reference'] ?? '';
+          if (BibleTopics.referenceMatchesTopic(reference, key)) {
+            matches.add(verse);
+          }
+        }
+      }
+      if (matches.isNotEmpty) {
+        return matches[_random.nextInt(matches.length)];
+      }
+    }
     final list = _versesByTopic[key];
     if (list == null || list.isEmpty) {
       final allList = _versesByTopic['all'];

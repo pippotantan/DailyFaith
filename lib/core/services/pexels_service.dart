@@ -26,15 +26,6 @@ class PexelsService {
   static const Duration _initialBackoff = Duration(seconds: 2);
   static const int _perPage = 15;
 
-  static const List<String> _variedQueries = [
-    'nature',
-    'faith',
-    'sky',
-    'landscape',
-    'flowers',
-    'mountains',
-  ];
-
   final Random _random = Random();
 
   /// Fetches a random background. [keywordId] filters by Pexels search query.
@@ -119,10 +110,11 @@ class PexelsService {
   }
 
   String _queryFor(String keywordId) {
-    if (keywordId == BackgroundKeywords.all || keywordId.isEmpty) {
-      return _variedQueries[_random.nextInt(_variedQueries.length)];
+    if (!BackgroundKeywords.searchKeywords.contains(keywordId)) {
+      final queries = BackgroundKeywords.searchKeywords;
+      return queries[_random.nextInt(queries.length)];
     }
-    return BackgroundKeywords.queryFor(keywordId);
+    return keywordId;
   }
 
   String? _bestImageUrl(Map<String, dynamic>? src) {

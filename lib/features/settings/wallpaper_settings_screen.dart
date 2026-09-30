@@ -467,7 +467,7 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Filter which verses appear on manual and automatic wallpapers. Default: all 66 books.',
+                    'Filter which verses appear on manual and automatic wallpapers. Choose a theme or a Bible book. Default: all 66 books.',
                     style: TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
